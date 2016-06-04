@@ -11,32 +11,29 @@ from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
 from errors import IntegrityError, InterfaceError
-from message import _unpack_response
+from message import unpack_response
 
 
 class Connection(object):
 
     def __init__(self, uri, pool, **kwargs):
-        """
-        :Parameters:
-          - `autoreconnect` (optional): auto reconnect on interface errors
-          - `seed`: seed list to connect to a replica set (required when replica sets are used)
-          - `secondary_only`: (optional, only useful for replica set connections)
-             if true, connect to a secondary member only
-        """
-        _uri = urlparse.urlparse(uri)
-        self._host = _uri.hostname
-        self._port = int(_uri.port or 27017)
+        try:
+            _uri = urlparse.urlparse(uri)
+            self._host = _uri.hostname
+            self._port = int(_uri.port or 27017)
+        except:
+            raise InterfaceError('Invalid URI')
+
         self._dbuser = _uri.username
         self._dbpass = _uri.password
         _q = urlparse.parse_qs(_uri.query or '')
         self._rs = _q.get('replicaSet', None)
 
-        #self._seed = seed
-        #self._secondary_only = secondary_only
+        # self._seed = seed
+        # self._secondary_only = secondary_only
         self.__stream = None
         self.__alive = False
-        #self.__autoreconnect = autoreconnect
+        # self.__autoreconnect = autoreconnect
         self.__pool = pool
 
         self.e_conn = Future()
@@ -59,7 +56,8 @@ class Connection(object):
         print 'M3'
         # yield self.e_run.wait()
         yield self.e_conn
-        #self.__job_queue.append(asyncjobs.AuthorizeJob(self, self._dbuser, self._dbpass, self.__pool, err_callback))
+        # self.__job_queue.append(asyncjobs.AuthorizeJob(self, self._dbuser,
+        #     self._dbpass, self.__pool, err_callback))
         print 'M4'
 
     @coroutine
@@ -67,7 +65,8 @@ class Connection(object):
         print 'M5'
         # yield self.e_run.wait()
         yield self.e_conn
-        #self.__job_queue.append(asyncjobs.ConnectRSJob(self, self._seed, self._rs, self._secondary_only, err_callback))
+        # self.__job_queue.append(asyncjobs.ConnectRSJob(self, self._seed,
+        #     self._rs, self._secondary_only, err_callback))
         print 'M6'
 
     def close(self):
@@ -120,7 +119,8 @@ class Connection(object):
     @coroutine
     def _get_response(self, length):
         response = yield self.__stream.read_bytes(length)
-        response = _unpack_response(response)
-        if response and response['data'] and response['data'][0].get('err') and response['data'][0].get('code'):
+        response = unpack_response(response)
+        if response and response['data'] and response['data'][0].get('err') and \
+                response['data'][0].get('code'):
             raise IntegrityError(response['data'][0]['err'], code=response['data'][0]['code'])
         raise Return(response)

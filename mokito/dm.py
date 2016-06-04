@@ -1,6 +1,5 @@
 # coding: utf-8
 
-
 SEPARATOR = '.'
 
 
@@ -165,7 +164,8 @@ class DM(object):
                 result[key] = v
         return result
 
-    def _convert(self, data_type, value):
+    @staticmethod
+    def _convert(data_type, value):
         if isinstance(data_type, dict):
             return DM_dict(data_type, value)
 
@@ -175,7 +175,7 @@ class DM(object):
         elif isinstance(data_type, tuple):
             return DM_tuple(data_type, value)
 
-        elif None not in (data_type, value):
+        elif not (None in (data_type, value) or isinstance(value, data_type)):
             try:
                 return data_type(value)
             except ValueError:
@@ -186,7 +186,7 @@ class DM(object):
 class DM_list(DM):
 
     def __init__(self, fields, data=None):
-        super(DM_list, self).__init__()
+        DM.__init__(self)
         self._rules = {k: v for k, v in enumerate(fields)}
         self._val = AValue()
 
@@ -245,7 +245,7 @@ class DM_list(DM):
 class DM_tuple(DM_list):
 
     def __init__(self, fields, data=None):
-        super(DM_tuple, self).__init__()
+        DM.__init__(self)
         self._rules = {k: v for k, v in enumerate(fields)}
         self._val = AValue()
 
@@ -262,7 +262,7 @@ class DM_tuple(DM_list):
 class DM_dict(DM):
 
     def __init__(self, fields, data=None):
-        super(DM_dict, self).__init__()
+        DM.__init__(self)
         self._rules = fields
         self._val = DValue()
 

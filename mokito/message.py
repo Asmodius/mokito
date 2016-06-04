@@ -1,8 +1,5 @@
 """Tools for creating `messages
-<http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to MongoDB.
-
-.. note:: This module is for internal use and is generally not needed by
-   application developers.
+<http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>
 """
 
 import random
@@ -68,7 +65,7 @@ def __pack_message(operation, data):
     message += struct.pack("<i", request_id)
     message += _ZERO_32
     message += struct.pack("<i", operation)
-    return (request_id, message + data)
+    return request_id, message + data
 
 
 def query(options, collection_name, num_to_skip, num_to_return, query, field_selector=None):
@@ -102,7 +99,7 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
     if safe:
         (_, insert_message) = __pack_message(OP_INSERT, data)
         (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, insert_message + error_message)
+        return request_id, insert_message + error_message
     else:
         return __pack_message(OP_INSERT, data)
 
@@ -123,7 +120,7 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     if safe:
         (_, update_message) = __pack_message(OP_UPDATE, data)
         (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, update_message + error_message)
+        return request_id, update_message + error_message
     else:
         return __pack_message(OP_UPDATE, data)
 
@@ -137,7 +134,7 @@ def delete(collection_name, spec, safe, last_error_args):
     if safe:
         (_, remove_message) = __pack_message(OP_DELETE, data)
         (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, remove_message + error_message)
+        return request_id, remove_message + error_message
     else:
         return __pack_message(OP_DELETE, data)
 
@@ -151,16 +148,14 @@ def kill_cursors(cursor_ids):
     return __pack_message(OP_KILL_CURSORS, data)
 
 
-def _unpack_response(response):
+def unpack_response(response):
     """Unpack a response from the database.
 
-    Check the response for errors and unpack, returning a dictionary
-    containing the response data.
+    Check the response for errors and unpack, returning a dictionary containing the response data.
     :Parameters:
       - `response`: byte string as returned from the database
-      - `cursor_id`: cursor_id we sent to get this response -
-        used for raising an informative exception when we get cursor id not
-        valid at server response
+      - `cursor_id`: cursor_id we sent to get this response - used for raising an informative
+      exception when we get cursor id not valid at server response
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:

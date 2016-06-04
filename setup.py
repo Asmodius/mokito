@@ -56,10 +56,8 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
-    zip_safe = False,
+    zip_safe=False,
     packages=find_packages(),
-    # setup_requires=['six', 'pymongo', 'tornado'],
     setup_requires=open("requirements.txt").read().split("\n"),
-    # install_requires=['six', 'pymongo', 'tornado'],
     install_requires=open("requirements.txt").read().split("\n"),
 )

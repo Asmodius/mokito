@@ -57,7 +57,7 @@
 #             self._state = "nonce"
 #             msg = message.query(
 #                 0,
-#                 "%s.$cmd" % self.pool._dbname,
+#                 "%s.$cmd" % self.pool._db_name,
 #                 0,
 #                 1,
 #                 SON({'getnonce': 1}),
@@ -76,7 +76,7 @@
 #
 #             msg = message.query(
 #                 0,
-#                 "%s.$cmd" % self.pool._dbname,
+#                 "%s.$cmd" % self.pool._db_name,
 #                 0,
 #                 1,
 #                 SON([('authenticate', 1),

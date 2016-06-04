@@ -9,39 +9,34 @@ from connection import Connection
 
 
 class ConnectionPool(object):
-    """Connection Pool to a single mongo instance.
+    def __init__(self, uri, db_name, max_cached, max_connections, **kwargs):
+        """Connection Pool to a single mongo instance.
 
-    :Parameters:
-      - `dbname`: mongo database name
-      - `maxcached` (optional): maximum inactive cached connections for this pool. 0 for unlimited
-      - `maxconnections` (optional): maximum open connections for this pool. 0 for unlimited
-      - `slave_okay` (optional): is it okay to connect directly to and perform queries on a slave instance
-      - `**kwargs`: passed to `connection.Connection`
-    """
-
-    def __init__(self,
-                 uri,
-                 dbname=None,
-                 maxcached=0,
-                 maxconnections=0,
-                 slave_okay=False,
-                 **kwargs):
-        assert isinstance(dbname, (str, unicode, None.__class__))
-        assert isinstance(maxcached, int)
-        assert isinstance(maxconnections, int)
-        assert isinstance(slave_okay, bool)
-        if maxconnections:
-            assert maxconnections >= maxcached
+        :param uri: connection uri string
+        :param db_name: mongo database name
+        :param max_cached: (optional): maximum inactive cached connections for this pool. 0 for
+            unlimited
+        :param max_connections: (optional): maximum open connections for this pool. 0 for unlimited
+        :param kwargs: passed to `connection.Connection`
+        """
+        assert isinstance(db_name, (str, unicode))
+        assert isinstance(max_cached, int)
+        assert isinstance(max_connections, int)
+        if max_connections:
+            assert max_connections >= max_cached
 
         self._kwargs = kwargs
         self._kwargs['pool'] = self
         self._kwargs['uri'] = uri
-        self._maxcached = maxcached
-        self._maxconnections = maxconnections
+        self._max_cached = max_cached
+        self._max_connections = max_connections
         self._idle_cache = []  # the actual connections that can be used
         self._idle_lock = Lock()
-        self._dbname = dbname
-        self._slave_okay = slave_okay
+        self._db_name = db_name
+
+    @property
+    def db_name(self):
+        return self._db_name
 
     @coroutine
     def get_connection(self):
@@ -50,8 +45,8 @@ class ConnectionPool(object):
             if self._idle_cache:
                 raise Return(self._idle_cache.pop(0))
 
-            if (self._maxconnections and self._maxconnections == len(self._idle_cache)):
-                raise TooManyConnections("Too many connections: %d" % self._maxconnections)
+            if self._max_connections and self._max_connections == len(self._idle_cache):
+                raise TooManyConnections("Too many connections: %d" % self._max_connections)
 
         conn = Connection(**self._kwargs)
         # IOLoop.current().spawn_callback(conn._run_conn_task)
@@ -72,7 +67,7 @@ class ConnectionPool(object):
             if con in self._idle_cache:
                 raise Return()
 
-            if not self._maxcached or len(self._idle_cache) < self._maxcached:
+            if not self._max_cached or len(self._idle_cache) < self._max_cached:
                 self._idle_cache.append(con)
             else:
                 con._close()

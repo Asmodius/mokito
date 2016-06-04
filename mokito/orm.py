@@ -2,16 +2,30 @@
 
 import six
 from UserList import UserList
-from copy import copy
-# from operator import attrgetter, getitem
 
 from bson import ObjectId  # , DBRef, Code
 from tornado.gen import coroutine, Return
 
 from errors import InterfaceError
 from dm import DM_dict
+from .client import Client
 
-_all_clients = {}
+
+class Database(object):
+    all_clients = {}
+
+    @classmethod
+    def get(cls, db_name):
+        return cls.all_clients.get(db_name)
+
+    @classmethod
+    def set(cls, db_name, uri, *args, **kwargs):
+        cls.all_clients[db_name] = Client(db_name, uri, *args, **kwargs)
+
+    @classmethod
+    def add(cls, db_name, uri, *args, **kwargs):
+        if db_name not in cls.all_clients:
+            cls.set(db_name, uri, *args, **kwargs)
 
 
 class Documents(UserList):
@@ -58,11 +72,11 @@ class DocumentMeta(type):
                 if not len(data):
                     data = (None,)
                 else:
-                    data = tuple(convert(i) for i in data)
+                    data = tuple(convert(j) for j in data)
 
             return data
 
-        for i in ['__database__', '__collection__', 'fields', 'required', 'roles']:
+        for i in ['__uri__', '__database__', '__collection__', 'fields', 'required', 'roles']:
             if i not in attr:
                 for j in bases:
                     if hasattr(j, i):
@@ -72,16 +86,16 @@ class DocumentMeta(type):
         convert(attr['fields'])
         attr['fields'].setdefault('_id', ObjectId)
         attr['_path'] = mk_path(attr['fields'])
-        #attr['_dm'] = DM_dict(attr['fields'])
-        _cls = type.__new__(cls, name, bases, attr)
-        # _reg_classes[_cls.__module__.split('.')[0] + '.' + name] = _cls
-        # if attr['Meta'].collection:
-        #     _reg_collections[attr['Meta'].collection] = _cls
-        return _cls
+
+        if attr['__database__']:
+            Database.add(attr['__database__'], attr['__uri__'])
+
+        return type.__new__(cls, name, bases, attr)
 
 
 @six.add_metaclass(DocumentMeta)
 class Document(object):
+    __uri__ = "mongodb://127.0.0.1:27017"
     __database__ = None
     __collection__ = None
     fields = {}
@@ -93,6 +107,9 @@ class Document(object):
         return self._data['_id']
 
     def __init__(self, data=None):
+        print
+        print 'RUL-1', self.fields
+        print 'RUL-2', data
         self._data = DM_dict(self.fields, data)
 
     def __setitem__(self, name, val):
@@ -113,7 +130,7 @@ class Document(object):
     @classmethod
     def _cursor(cls):
         try:
-            return _all_clients[cls.__database__][cls.__collection__]
+            return Database.get(cls.__database__)[cls.__collection__]
         except KeyError:
             raise InterfaceError('Connection to the database "%s" not found' % cls.__database__)
 
@@ -132,11 +149,11 @@ class Document(object):
 
     @classmethod
     @coroutine
-    def find(cls, spec=None, skip=0, limit=0, timeout=True, snapshot=False,
-             tailable=False, sort=None, max_scan=None, slave_okay=False,
-             hint=None, comment=None):
+    def find(cls, spec=None, skip=0, limit=0, timeout=True, snapshot=False, tailable=False,
+             sort=None, max_scan=None, slave_okay=False, hint=None, comment=None):
         cur = cls._cursor()
-        data = yield cur.find(spec, cls._path, skip, limit, timeout, snapshot, tailable, sort, max_scan, slave_okay, False, hint, comment)
+        data = yield cur.find(spec, cls._path, skip, limit, timeout, snapshot, tailable, sort,
+                              max_scan, slave_okay, False, hint, comment)
         res = Documents([cls(i) for i in data])
         res.dirty_clear()
         raise Return(res)
@@ -221,10 +238,12 @@ if __name__ == "__main__":
 
         @property
         def fio(self):
-            return ' '.join((self['last_name'] or '', self['first_name'] or '', self['patronymic_name'] or ''))
+            return ' '.join((self['last_name'] or '', self['first_name'] or '',
+                             self['patronymic_name'] or ''))
 
         def __unicode__(self):
-            return u'Driver(%s): %s %s' % (self['_id'], self['last_name'] or '', self['first_name'] or '')
+            return u'Driver(%s): %s %s' % (self['_id'], self['last_name'] or '',
+                                           self['first_name'] or '')
 
 #     x = {'first_name': 'F', 'last_name': 'L', 'patronymic_name': 'P', 'car': {'number': 123}}
 #     d1 = Driver(**x)
