@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import copy
 import six
 from UserList import UserList
 
@@ -7,8 +8,8 @@ from bson import ObjectId  # , DBRef, Code
 from tornado.gen import coroutine, Return
 
 from errors import InterfaceError
-from dm import DM_dict
-from .client import Client
+from client import Client
+from ruler import Node
 
 
 class Database(object):
@@ -76,7 +77,7 @@ class DocumentMeta(type):
 
             return data
 
-        for i in ['__uri__', '__database__', '__collection__', 'fields', 'required', 'roles']:
+        for i in ['__uri__', '__database__', '__collection__', 'fields', 'roles']:
             if i not in attr:
                 for j in bases:
                     if hasattr(j, i):
@@ -85,6 +86,7 @@ class DocumentMeta(type):
 
         convert(attr['fields'])
         attr['fields'].setdefault('_id', ObjectId)
+        attr['_ruler'] = Node.make(attr['fields'])
         attr['_path'] = mk_path(attr['fields'])
 
         if attr['__database__']:
@@ -99,7 +101,6 @@ class Document(object):
     __database__ = None
     __collection__ = None
     fields = {}
-    required = []
     roles = {}
 
     @property
@@ -107,10 +108,8 @@ class Document(object):
         return self._data['_id']
 
     def __init__(self, data=None):
-        print
-        print 'RUL-1', self.fields
-        print 'RUL-2', data
-        self._data = DM_dict(self.fields, data)
+        self._data = copy.copy(self._ruler)
+        self._data.set(data)
 
     def __setitem__(self, name, val):
         self._data[name] = val
@@ -135,7 +134,7 @@ class Document(object):
             raise InterfaceError('Connection to the database "%s" not found' % cls.__database__)
 
     def dirty_clear(self):
-        self._data.dirty_clear()
+        self._data.changed_clear()
 
     @classmethod
     @coroutine
@@ -149,11 +148,11 @@ class Document(object):
 
     @classmethod
     @coroutine
-    def find(cls, spec=None, skip=0, limit=0, timeout=True, snapshot=False, tailable=False,
-             sort=None, max_scan=None, slave_okay=False, hint=None, comment=None):
+    def find(cls, spec=None, skip=0, limit=0, snapshot=False, tailable=False,
+             sort=None, max_scan=None, hint=None):
         cur = cls._cursor()
-        data = yield cur.find(spec, cls._path, skip, limit, timeout, snapshot, tailable, sort,
-                              max_scan, slave_okay, False, hint, comment)
+        data = yield cur.find(spec, cls._path, skip, limit, snapshot,
+                              tailable, sort, max_scan, False, hint)
         res = Documents([cls(i) for i in data])
         res.dirty_clear()
         raise Return(res)
@@ -165,20 +164,12 @@ class Document(object):
         data = yield cur.count(spec)
         raise Return(data)
 
-    def pre_save(self):
-        pass
-
     @coroutine
     def save(self):
-        self.pre_save()
-        if self._data['_id'] is None:
-            self._data['_id'] = ObjectId()
-
-        data = self._data.dirty_data()
-        if data:
-            print 'SAVE-2', data
+        self._data.setdefault('_id', ObjectId())
+        if self._data.dirty:
             cur = self._cursor()
-            yield cur.update({"_id": self._data['_id']}, {"$set": data}, upsert=True)
+            yield cur.update({"_id": self._data['_id']}, self._data.query(), upsert=True)
             self.dirty_clear()
 
     def to_json(self, role=None, no_id=False):
@@ -187,44 +178,43 @@ class Document(object):
             fields.remove('_id')
 
         data = {}
-        _fields = []
+        _fields = set()
         for i in fields:
             if hasattr(self, i):
                 data[i] = getattr(self, i)
             else:
-                _fields.append(i)
-
-        data.update(self._data.inner_data(_fields))
+                _fields.add(i)
+        data.update(self._data.value(_fields))
 
         if not no_id:
             data['_id'] = str(self._id)
 
         return data
 
-#     @classmethod
-#     @coroutine
-#     def from_json(cls, **kwargs):
-#         self = None
-#         _id = kwargs.pop('_id', None)
-#         if _id:
-#             self = yield cls.find_one(_id)
-#         if not self:
-#             self = cls()
-#
-#         for k, v in kwargs.items():
-#             self[k] = v
-#         raise Return(self)
+    @classmethod
+    @coroutine
+    def from_json(cls, **kwargs):
+        self = None
+        _id = kwargs.pop('_id', None)
+        if _id:
+            self = yield cls.find_one(_id)
+        if not self:
+            self = cls()
+
+        for k, v in kwargs.items():
+            self._data[k] = v
+        raise Return(self)
 
 if __name__ == "__main__":
     class Driver(Document):
         __collection__ = 'driver'
         fields = {
             'first_name': str,
-            #'last_name': str,
-            #'patronymic_name': str,
+            'last_name': str,
+            'patronymic_name': str,
 
             # car
-            #'car': {'number': str, 'hz': str},
+            'car': {'number': str, 'hz': str},
 
             #"3c": {"3c1": int, "3c2": str, "3c3": dict, "3c4": {}},
 
@@ -234,76 +224,77 @@ if __name__ == "__main__":
 
             #"5a": (int, str, ),
         }
-        required = ['first_name', 'last_name']
 
         @property
         def fio(self):
-            return ' '.join((self['last_name'] or '', self['first_name'] or '',
-                             self['patronymic_name'] or ''))
+            return ' '.join((self['last_name'].value() or '',
+                             self['first_name'].value() or '',
+                             self['patronymic_name'].value() or ''))
 
         def __unicode__(self):
             return u'Driver(%s): %s %s' % (self['_id'], self['last_name'] or '',
                                            self['first_name'] or '')
 
-#     x = {'first_name': 'F', 'last_name': 'L', 'patronymic_name': 'P', 'car': {'number': 123}}
-#     d1 = Driver(**x)
-#     print 'D1', d1
-#     print 'D2', d1._data
-#     print 'D3', d1._data['first_name']
-#     print 'D4', d1['first_name']
-#     d1['first_name'] = 'AssA'
-#     d1['car.number'] = 12345
-#     print 'D2', d1._data
-#     print 'D1', d1
-#     print 'D5', d1.fio
+    x = {'first_name': 'F', 'last_name': 'L', 'patronymic_name': 'P', 'car': {'number': 123}}
+    d1 = Driver(x)
+    print 'D1', d1
+    print 'D2', d1._data
+    print 'D3', d1._data['first_name']
+    print 'D4', d1['first_name']
+    d1['first_name'] = 'AssA'
+    d1['car.number'] = 12345
+    print 'D2', d1._data
+    print 'D1', d1
+    print 'D5', d1.fio
+    print 'D6', d1._data.query()
 
-    #d = Driver()
-
-    #d = Driver({"first_name": "AsA", 'car': {'number': 123, 'hz': 'djiga'}, "4d": [1, 2, 3]})
-    d = Driver({"first_name": "AsA", "4d": [0, 1, 2]})
-    print 'D1a', d
-    print 'D2a', d._data
-    print
-    # print 'D31', d._data.dirty()
-#     d.dirty_clear()
-#     print 'XX1', d._data.dirty_data()
-#     # print 'D32', d._data._dirty
-
-    #d['first_name'] = 'QQ'
+#     #d = Driver()
+#
+#     #d = Driver({"first_name": "AsA", 'car': {'number': 123, 'hz': 'djiga'}, "4d": [1, 2, 3]})
+#     d = Driver({"first_name": "AsA", "4d": [0, 1, 2]})
+#     print 'D1a', d
+#     print 'D2a', d._data
 #     print
-#     print 'D1b', d
-#     print 'D2b', d._data
-#     print 'D31', d._data._dirty
-
-    # print 'D3', d['4d']
-    # print 'D4', d['car']
-    # print 'D4-1', d['car.number']
-    #d['car.number'] = 456
-#     print 'D4-2', d['car.number']
-#     # print 'D31', d1._data._dirty
-#     print 'XX2', d._data.dirty_data()
-
-    # print 'X1b', d
-    # print 'X2b', d._data
-    # print 'X31', d._data._dirty
-    # print 'X32', d._data.dirty()
-    # d._data.dirty_clear()
-    # print 'X32', d._data.dirty()
-    # print 'X40', d._data.dirty_data()
-
-    # print '4D1', d['4d']
-    #d['4d'] = [4, 5, 6]
-    # print '4D2', d['4d']
-    # print '4D3', d._data
-
-    # print '4D1', d['4d']
-    #d['4d.1'] = 123
-    # print '4D2', d['4d']
-    # print '4D3', d._data
-
-    print 'X40', d._data
-    print 'X41', d._data.inner_data()
-    # print 'X42', d._data.inner_data(['car.number', 'car.hz'])
-    # print 'X42', d._data.inner_data(['car'])
-
-    # print 'X42', d._data.inner_data(['4d'])
+#     # print 'D31', d._data.dirty()
+# #     d.dirty_clear()
+# #     print 'XX1', d._data.dirty_data()
+# #     # print 'D32', d._data._dirty
+#
+#     #d['first_name'] = 'QQ'
+# #     print
+# #     print 'D1b', d
+# #     print 'D2b', d._data
+# #     print 'D31', d._data._dirty
+#
+#     # print 'D3', d['4d']
+#     # print 'D4', d['car']
+#     # print 'D4-1', d['car.number']
+#     #d['car.number'] = 456
+# #     print 'D4-2', d['car.number']
+# #     # print 'D31', d1._data._dirty
+# #     print 'XX2', d._data.dirty_data()
+#
+#     # print 'X1b', d
+#     # print 'X2b', d._data
+#     # print 'X31', d._data._dirty
+#     # print 'X32', d._data.dirty()
+#     # d._data.dirty_clear()
+#     # print 'X32', d._data.dirty()
+#     # print 'X40', d._data.dirty_data()
+#
+#     # print '4D1', d['4d']
+#     #d['4d'] = [4, 5, 6]
+#     # print '4D2', d['4d']
+#     # print '4D3', d._data
+#
+#     # print '4D1', d['4d']
+#     #d['4d.1'] = 123
+#     # print '4D2', d['4d']
+#     # print '4D3', d._data
+#
+#     print 'X40', d._data
+#     print 'X41', d._data.inner_data()
+#     # print 'X42', d._data.inner_data(['car.number', 'car.hz'])
+#     # print 'X42', d._data.inner_data(['car'])
+#
+#     # print 'X42', d._data.inner_data(['4d'])

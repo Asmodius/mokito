@@ -1,45 +1,22 @@
 # coding: utf-8
 
-import sys
 import datetime
 import unittest
-import random
-import string
 
 from bson import ObjectId
 
-from mokito.ruler import *
-
-
-def random_int():
-    return random.randint(-sys.maxint, sys.maxint)
-
-
-def random_float():
-    return random.uniform(-sys.maxint, sys.maxint)
-
-
-def random_str(n=100):
-    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(n))
-
-
-def random_datetime():
-    return datetime.datetime(random.randint(2000, 2100),
-                             random.randint(1, 12),
-                             random.randint(1, 28),
-                             random.randint(0, 23),
-                             random.randint(0, 59),
-                             random.randint(0, 59))
+from mokito.ruler import Node
+from tests.util import random_int, random_str, random_float, random_datetime
 
 
 class TestSequenceFunctions(unittest.TestCase):
 
     def test_Node_ObjectId(self):
-        node1 = Node(ObjectId)
+        node1 = Node.make(ObjectId)
         self.assertIsNotNone(node1)
         self.assertIsNone(node1.value())
         self.assertFalse(node1.dirty)
-        node2 = Node(ObjectId)
+        node2 = Node.make(ObjectId)
         self.assertIsNotNone(node2)
         self.assertIsNone(node2.value())
         self.assertFalse(node2.dirty)
@@ -47,7 +24,7 @@ class TestSequenceFunctions(unittest.TestCase):
         _id = ObjectId()
         node1.set(_id)
         self.assertEqual(node1.value(), _id)
-        self.assertEqual(str(node1), str(_id))
+        self.assertEqual(str(node1.value()), str(_id))
         self.assertTrue(node1.dirty)
 
         self.assertFalse(node1 == node2)
@@ -59,7 +36,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertFalse(node1.dirty)
 
     def test_Node_None(self):
-        node = Node(None)
+        node = Node.make(None)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -74,7 +51,7 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertTrue(node.dirty)
 
     def test_Node_str_1(self):
-        node = Node(str)
+        node = Node.make(str)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -90,7 +67,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertTrue(node.dirty)
 
     def test_Node_str_2(self):
-        node = Node(str)
+        node = Node.make(str)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -104,11 +81,11 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(node.value(), x)
 
     def test_Node_int_1(self):
-        node1 = Node(int)
+        node1 = Node.make(int)
         self.assertIsNotNone(node1)
         self.assertIsNone(node1.value())
         self.assertFalse(node1.dirty)
-        node2 = Node(int)
+        node2 = Node.make(int)
         self.assertIsNotNone(node2)
         self.assertIsNone(node2.value())
         self.assertFalse(node2.dirty)
@@ -138,7 +115,7 @@ class TestSequenceFunctions(unittest.TestCase):
             node1.set('foo')
 
     def test_Node_int_2(self):
-        node = Node(int)
+        node = Node.make(int)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -152,7 +129,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(node.value(), x)
 
     def test_Node_bool_1(self):
-        node = Node(bool)
+        node = Node.make(bool)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -171,7 +148,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertTrue(node.dirty)
 
     def test_Node_bool_2(self):
-        node = Node(bool)
+        node = Node.make(bool)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -185,11 +162,11 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertFalse(node.dirty)
 
     def test_Node_float_1(self):
-        node1 = Node(float)
+        node1 = Node.make(float)
         self.assertIsNotNone(node1)
         self.assertIsNone(node1.value())
         self.assertFalse(node1.dirty)
-        node2 = Node(float)
+        node2 = Node.make(float)
         self.assertIsNotNone(node2)
         self.assertIsNone(node2.value())
         self.assertFalse(node2.dirty)
@@ -215,7 +192,7 @@ class TestSequenceFunctions(unittest.TestCase):
             node1.set('foo')
 
     def test_Node_float_2(self):
-        node = Node(float)
+        node = Node.make(float)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
         self.assertFalse(node.dirty)
@@ -229,7 +206,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(node.value(), x)
 
     def test_Node_datetime(self):
-        node = Node(datetime.datetime)
+        node = Node.make(datetime.datetime)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
 
@@ -246,7 +223,7 @@ class TestSequenceFunctions(unittest.TestCase):
             node.set('foo')
 
     def test_NodeTuple_1(self):
-        node = NodeTuple(tuple)
+        node = Node.make(tuple)
         self.assertIsNotNone(node)
         self.assertEqual(node.value(), [])
         node.set([1])
@@ -254,11 +231,11 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_NodeTuple_2(self):
         rul = (int,)
-        node1 = NodeTuple(rul)
+        node1 = Node.make(rul)
         self.assertIsNotNone(node1)
         self.assertEqual(node1.value(), [None])
         self.assertFalse(node1.dirty)
-        node2 = NodeTuple(rul)
+        node2 = Node.make(rul)
         self.assertIsNotNone(node2)
         self.assertEqual(node2.value(), [None])
         self.assertFalse(node2.dirty)
@@ -302,7 +279,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_NodeTuple_3(self):
         rul = (int, str,)
-        node = NodeTuple(rul)
+        node = Node.make(rul)
         self.assertIsNotNone(node)
         self.assertEqual(node.value(), [None, None])
         self.assertFalse(node.dirty)
@@ -320,7 +297,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_NodeTuple_4(self):
         rul = (None, dict, list, (int, str,))
-        node = NodeTuple(rul)
+        node = Node.make(rul)
         self.assertIsNotNone(node)
         self.assertEqual(node.value(), [None, {}, [], [None, None]])
         self.assertFalse(node.dirty)
@@ -371,7 +348,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(node.value(), data)
 
     def test_NodeList_1(self):
-        node = NodeList(list)
+        node = Node.make(list)
         self.assertIsNotNone(node)
         self.assertEqual(node.value(), [])
 
@@ -386,9 +363,8 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_NodeList_2(self):
         rul = [(int, str,)]
-        node = NodeList(rul)
+        node = Node.make(rul)
         self.assertIsNotNone(node)
-        print node.value()
         self.assertEqual(node.value(), [])
         self.assertFalse(node.dirty)
 
@@ -447,10 +423,10 @@ class TestSequenceFunctions(unittest.TestCase):
             'x3': [321],
         }
 
-        node1 = NodeDict(dict)
+        node1 = Node.make(dict)
         self.assertIsNotNone(node1)
         self.assertEqual(node1.value(), {})
-        node2 = NodeDict(dict)
+        node2 = Node.make(dict)
         self.assertIsNotNone(node2)
         self.assertEqual(node2.value(), {})
 
@@ -486,7 +462,7 @@ class TestSequenceFunctions(unittest.TestCase):
             'x4': (int, None)
         }
 
-        node = NodeDict(rul)
+        node = Node.make(rul)
         self.assertIsNotNone(node)
         self.assertDictEqual(node.value(),
                              {'x1': None,
@@ -516,3 +492,161 @@ class TestSequenceFunctions(unittest.TestCase):
         del node['x1']
         data['x1'] = None
         self.assertDictEqual(node.value(), data)
+
+    def test_Node_query_1(self):
+        node = Node.make(None)
+        x1 = random_int()
+        node.set(x1)
+        self.assertEqual(node.query(), {'$set': x1})
+
+    def test_Node_query_2(self):
+        node = Node.make(list)
+        x1 = random_int()
+        s1 = random_str()
+        d1 = {'x1': x1, 's1': s1}
+        node.set([x1, s1])
+        self.assertEqual(node.query(), {'$set': [x1, s1]})
+        del node[0]
+        self.assertEqual(node.query(), {'$set': [s1]})
+        node.append(x1)
+        self.assertEqual(node.query(), {'$set': [s1, x1]})
+        node.append(d1)
+        q = node.query()
+        self.assertEqual(q['$set'][:2], [s1, x1])
+        self.assertDictEqual(q['$set'][2], d1)
+
+    def test_Node_query_3(self):
+        node = Node.make(dict)
+        x1 = random_int()
+        s1 = random_str()
+        data = {'x1': x1, 's1': s1, 'x2': [x1, s1]}
+        node.set(data)
+        self.assertDictEqual(node.query()['$set'], data)
+        del node['x1']
+        del data['x1']
+        node['x3'] = [x1, s1]
+        data['x3'] = [x1, s1]
+        self.assertDictEqual(node.query()['$set'], data)
+
+    def test_Node_query_4(self):
+        rul = [(int, str)]
+        node = Node.make(rul)
+        data1 = [random_int(), random_str()]
+        data2 = [random_int(), random_str()]
+        node.set([data1])
+        self.assertEqual(node.query()['$set'], [data1])
+        node.append(data2)
+        self.assertEqual(node.query()['$set'], [data1, data2])
+        node.changed_clear()
+        del node[0]
+        self.assertEqual(node.query()['$set'], [data2])
+
+    def test_Node_query_4(self):
+        rul = (int, str)
+        node = Node.make(rul)
+        data = [random_int(), random_str()]
+        node.set(data)
+        self.assertEqual(node.query()['$set'], data)
+        del node[0]
+        data[0] = None
+        self.assertEqual(node.query()['$set'], data)
+
+    def test_Node_query_5(self):
+        rul = (int, str)
+        node = Node.make(rul)
+        data = [random_int(), random_str()]
+        node.set(data)
+        node.changed_clear()
+        del node[0]
+        self.assertEqual(node.query(), {'$unset': {0: ''}})
+
+    def test_Node_query_5(self):
+        rul = {
+            'x1': str,
+            'x2': {
+                'y1': int,
+                'y2': float
+            },
+            'x3': [int],
+            'x4': (int, None)
+        }
+        node = Node.make(rul)
+        x1 = random_str()
+        y1 = random_int()
+        y2 = random_float()
+        x3 = random_int()
+        x4 = random_int()
+        s2 = random_datetime()
+        data = {
+            'x1': x1,
+            'x2': {
+                'y1': y1,
+                'y2': y2
+            },
+            'x3': [x3],
+            'x4': (x4, s2)
+        }
+        node.set(data)
+        self.assertDictEqual(node.query(), {
+            '$set': {'x1': x1, 'x2.y1': y1, 'x2.y2': y2, 'x3': [x3], 'x4': [x4, s2]}
+        })
+
+        del node['x3']
+        self.assertDictEqual(node.query(), {
+            '$set': {'x1': x1, 'x2.y1': y1, 'x2.y2': y2, 'x4': [x4, s2]},
+            '$unset': {'x3': ''}
+        })
+
+        del node['x2.y2']
+        self.assertDictEqual(node.query(), {
+            '$set': {'x1': x1, 'x2.y1': y1, 'x4': [x4, s2]},
+            '$unset': {'x2.y2': '', 'x3': ''}
+        })
+
+        del node['x4.0']
+        self.assertDictEqual(node.query(), {
+            '$set': {'x1': x1, 'x2.y1': y1, 'x4': [None, s2]},
+            '$unset': {'x2.y2': '', 'x3': ''}
+        })
+
+    def test_Node_query_6(self):
+        rul = {
+            'x1': str,
+            'x2': {
+                'y1': int,
+                'y2': float
+            },
+            'x3': [int],
+            'x4': (int, None)
+        }
+        node = Node.make(rul)
+        x1 = random_str()
+        y1 = random_int()
+        y2 = random_float()
+        x3 = random_int()
+        x4 = random_int()
+        s2 = random_datetime()
+        data = {
+            'x1': x1,
+            'x2': {
+                'y1': y1,
+                'y2': y2
+            },
+            'x3': [x3],
+            'x4': (x4, s2)
+        }
+        node.set(data)
+        node.changed_clear()
+        self.assertEqual(node.query(), {})
+
+        del node['x3']
+        self.assertDictEqual(node.query(), {'$unset': {'x3': ''}})
+
+        del node['x2.y2']
+        self.assertDictEqual(node.query(), {'$unset': {'x2.y2': '', 'x3': ''}})
+
+        del node['x4.0']
+        self.assertDictEqual(node.query(), {
+            '$set': {'x4.0': None},
+            '$unset': {'x2.y2': '', 'x3': ''}
+        })

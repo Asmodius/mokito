@@ -6,6 +6,7 @@ __all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
 
 SEPARATOR = '.'
 
+# TODO: Node.value(fields=None)
 
 class Node(object):
     def __init__(self, rules):
@@ -34,6 +35,9 @@ class Node(object):
     def __ge__(self, other):
         return self.value() >= self._cast(other)
 
+    def __repr__(self):
+        return "<%s: %s>" % (self.__class__.__name__, self.value())
+
     def __str__(self):
         return str(self.value())
 
@@ -47,8 +51,9 @@ class Node(object):
             return data_type()
         return data_type
 
-    def _maker(self, data_type):
-        data_type = self._normalize(data_type)
+    @classmethod
+    def make(cls, data_type):
+        data_type = cls._normalize(data_type)
 
         if isinstance(data_type, dict):
             return NodeDict(data_type)
@@ -82,6 +87,9 @@ class Node(object):
     def dirty(self):
         return self._changed
 
+    def query(self):
+        return {"$set": self._val}
+
 
 class NodeComposite(Node):
     def __init__(self, rules):
@@ -94,7 +102,7 @@ class NodeComposite(Node):
     def __contains__(self, item):
         raise NotImplemented
 
-    def __getitem__(self, key):
+    def __getitem__(self, key, default=None):
         raise NotImplemented
 
     def _del_sub_item(self, k1, k2):
@@ -109,6 +117,9 @@ class NodeComposite(Node):
     def _dec_changed(self, key):
         self._changed.discard(key)
         self._removed.add(key)
+
+    def get(self, key, default=None):
+        return self.__getitem__(key, default)
 
     def clear(self):
         self._val = {}
@@ -139,10 +150,19 @@ class NodeArray(NodeComposite):
         super(NodeArray, self).__init__(rules)
         assert isinstance(self._rules, (list, tuple))
 
-    def __getitem__(self, key):
+    def __repr__(self):
+        ret = []
+        for i in range(len(self)):
+            if i in self._val:
+                ret.append(self._val[i].__repr__())
+            elif not (ret and ret[-1] == '...'):
+                ret.append('...')
+        return "<%s: [%s]>" % (self.__class__.__name__, ','.join(ret))
+
+    def __getitem__(self, key, default=None):
         k1, _, k2 = str(key).partition(SEPARATOR)
         k1 = int(k1)
-        ret = self._val.get(k1)
+        ret = self._val.get(k1, default)
         if k2:
             ret = ret[k2] if isinstance(ret, NodeComposite) else None
         return ret
@@ -195,7 +215,7 @@ class NodeArray(NodeComposite):
                 return ret
         return ret
 
-    def value(self):
+    def value(self, fields=None):
         return self[:]
 
 
@@ -211,7 +231,7 @@ class NodeTuple(NodeArray):
             raise IndexError(k1)
         ret = False
         if k1 not in self._val:
-            self._val[k1] = self._maker(self._rules[k1])
+            self._val[k1] = self.make(self._rules[k1])
             ret = True
         if (k2 and self._val[k1].__setitem__(k2, value)) or self._val[k1].set(value):
             ret = True
@@ -226,7 +246,7 @@ class NodeTuple(NodeArray):
             raise IndexError(k1)
         if k2:
             return self._del_sub_item(k1, k2)
-        self._val[k1] = self._maker(self._rules[k1])
+        self._val[k1] = self.make(self._rules[k1])
         self._dec_changed(k1)
         return True
 
@@ -245,9 +265,19 @@ class NodeTuple(NodeArray):
             self.__setitem__(k1, value)
 
     def clear(self):
-        self._val = {k: self._maker(v) for k, v in enumerate(self._rules)}
+        self._val = {k: self.make(v) for k, v in enumerate(self._rules)}
         self._changed.clear()
         self._removed.clear()
+
+    def query(self):
+        if not self._changed:
+            if self._removed:
+                return {"$set": {i: None for i in self._removed}}
+            else:
+                return {}
+
+        ret = [self._val[i].value() if i in self._val else None for i in range(len(self))]
+        return {"$set": ret}
 
 
 class NodeList(NodeArray):
@@ -266,7 +296,7 @@ class NodeList(NodeArray):
         k1 = int(k1)
         ret = False
         if k1 not in self._val:
-            self._val[k1] = self._maker(self._rules[0])
+            self._val[k1] = self.make(self._rules[0])
             ret = True
         if (k2 and self._val[k1].__setitem__(k2, value)) or self._val[k1].set(value):
             ret = True
@@ -305,7 +335,7 @@ class NodeList(NodeArray):
 
     def _insert_sub_item(self, k1, k2, value):
         if k1 not in self._val:
-            self._val[k1] = self._maker(self._rules[0])
+            self._val[k1] = self.make(self._rules[0])
             self._changed = {i if i < k1 else i+1 for i in self._changed}
             self._removed = {i if i < k1 else i+1 for i in self._removed}
         self._val[k1].insert(k2, value)
@@ -331,18 +361,26 @@ class NodeList(NodeArray):
     def append(self, value):
         self[len(self)] = value
 
+    def query(self):
+        ret = [self._val[i].value() if i in self._val else None for i in range(len(self))]
+        return {"$set": ret}
+
 
 class NodeDict(NodeComposite):
     def __init__(self, rules):
         super(NodeDict, self).__init__(rules)
         assert isinstance(self._rules, dict)
 
+    def __repr__(self):
+        return "<%s: %s>" % (self.__class__.__name__,
+                             {k: v.__repr__() for k, v in self._val.items()})
+
     def __len__(self):
         return len(self._val)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key, default=None):
         k1, _, k2 = str(key).partition(SEPARATOR)
-        ret = self._val.get(k1)
+        ret = self._val.get(k1, default)
         if k2:
             ret = ret[k2] if isinstance(ret, NodeComposite) else None
         return ret
@@ -351,10 +389,15 @@ class NodeDict(NodeComposite):
         k1, _, k2 = str(key).partition(SEPARATOR)
         if k1 not in self._val:
             if not self._rules:
-                _t = self._maker([] if isinstance(value, (list, type, NodeArray)) else None)
-                self._val[k1] = _t
+                if isinstance(value, (list, tuple, NodeArray)):
+                    _t = []
+                elif isinstance(value, (dict, NodeDict)):
+                    _t = {}
+                else:
+                    _t = None
+                self._val[k1] = self.make(_t)
             elif k1 in self._rules:
-                self._val[k1] = self._maker(self._rules.get(k1))
+                self._val[k1] = self.make(self._rules.get(k1))
             else:
                 raise KeyError(k1)
         if (k2 and self._val[k1].__setitem__(k2, value)) or self._val[k1].set(value):
@@ -367,8 +410,8 @@ class NodeDict(NodeComposite):
         if k2:
             return self._del_sub_item(k1, k2)
         if self._rules:
-            self._val[k1] = self._maker(self._rules.get(k1))
-            self._inc_changed(k1)
+            self._val[k1] = self.make(self._rules.get(k1))
+            self._dec_changed(k1)
             return True
         elif k1 in self._val:
             del self._val[k1]
@@ -381,13 +424,17 @@ class NodeDict(NodeComposite):
 
     def set(self, value):
         ret = False
-        for k, v in self._cast(value).items():
-            if self.__setitem__(k, v):
-                ret = True
+        if isinstance(value, dict):
+            for k, v in self._cast(value).items():
+                try:
+                    if self.__setitem__(k, v):
+                        ret = True
+                except KeyError:
+                    pass
         return ret
 
     def clear(self):
-        self._val = {k: self._maker(v) for k, v in self._rules.items()}
+        self._val = {k: self.make(v) for k, v in self._rules.items()}
         self._changed.clear()
         self._removed.clear()
 
@@ -400,23 +447,18 @@ class NodeDict(NodeComposite):
     def values(self):
         return self.value().values()
 
-    def update(self, data):
-        if isinstance(data, dict):
-            for k, v in data.items():
+    def update(self, value):
+        if isinstance(value, dict):
+            for k, v in value.items():
                 self[k] = v
-        elif isinstance(data, NodeDict):
-            for k, v in data.items():
+        elif isinstance(value, NodeDict):
+            for k, v in value.items():
                 self[k] = v.value()
         else:
             raise TypeError
 
-    def get(self, key, default=None):
-        if key not in self._val:
-            return default
-        return self[key]
-
     def setdefault(self, key, default=None):
-        if key not in self._val:
+        if self._val.get(key) is None:
             self[key] = default
         return self[key]
 
@@ -425,5 +467,27 @@ class NodeDict(NodeComposite):
         self.__delitem__(key)
         return ret
 
-    def value(self):
-        return {k: v.value() for k, v in self._val.items()}
+    def value(self, fields=None):
+        # return {k: v.value() for k, v in self._val.items()}
+        return {i: self._cast(self.get(i)) for i in fields or self._val.keys()}
+
+    def query(self):
+        ret = {"$set": {}, "$unset": {}}
+        if self._rules and self._removed:
+            ret["$unset"] = {i: "" for i in self._removed}
+
+        for i in self._changed:
+            _q = self._val[i].query()
+            for j in ["$set", "$unset"]:
+                if j in _q:
+                    _v = _q[j]
+                    if isinstance(_v, dict):
+                        for k, v in _v.items():
+                            ret[j]["%s.%s" % (i, k)] = v
+                    else:
+                        ret[j][i] = _v
+        if not ret["$set"]:
+            del ret["$set"]
+        if not ret["$unset"]:
+            del ret["$unset"]
+        return ret
