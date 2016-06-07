@@ -76,7 +76,7 @@ class Connection(object):
         """close the socket and cleanup"""
         if not self.__alive:
             raise InterfaceError('connection closed')
-        #self.__job_queue = []
+        # self.__job_queue = []
         self.__alive = False
         self.__stream.close()
 

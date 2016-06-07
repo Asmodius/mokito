@@ -8,11 +8,15 @@ SEPARATOR = '.'
 
 # TODO: Node.value(fields=None)
 
+
 class Node(object):
     def __init__(self, rules):
         self._changed = False
         self._val = None
         self._rules = self._normalize(rules)
+
+    def __call__(self):
+        return self.__class__(self._rules)
 
     def __cmp__(self, other):
         return cmp(self.value(), self._cast(other))
@@ -178,7 +182,7 @@ class NodeArray(NodeComposite):
 
     def __delslice__(self, start, stop):
         start, stop = self.__start_stop(start, stop)
-        for i in range(stop-1, start-1, -1):
+        for i in range(stop - 1, start - 1, -1):
             self.__delitem__(i)
 
     def __len__(self):
@@ -216,6 +220,8 @@ class NodeArray(NodeComposite):
         return ret
 
     def value(self, fields=None):
+        if fields:
+            return [self.__getitem__(i) for i in fields]
         return self[:]
 
 
@@ -289,7 +295,7 @@ class NodeList(NodeArray):
 
     def __len__(self):
         k = self._val.keys()
-        return max(k+[0, len(k)])
+        return max(k + [0, len(k)])
 
     def __setitem__(self, key, value):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -315,7 +321,7 @@ class NodeList(NodeArray):
                 if k < k1:
                     tmp[k] = v
                 elif k > k1:
-                    tmp[k-1] = v
+                    tmp[k - 1] = v
             self._dec_changed(k1)
             self._changed = {i if i < k1 else i - 1 for i in self._changed}
             self._removed = {i if i < k1 else i - 1 for i in self._removed}
@@ -326,7 +332,7 @@ class NodeList(NodeArray):
         start, stop = self.__start_stop(start, stop)
         self.__delslice__(start, stop)
         for k, v in enumerate(self._cast(other)):
-            self.insert(k+start, v)
+            self.insert(k + start, v)
 
     def __iadd__(self, other):
         for i in self._cast(other):
@@ -336,8 +342,8 @@ class NodeList(NodeArray):
     def _insert_sub_item(self, k1, k2, value):
         if k1 not in self._val:
             self._val[k1] = self.make(self._rules[0])
-            self._changed = {i if i < k1 else i+1 for i in self._changed}
-            self._removed = {i if i < k1 else i+1 for i in self._removed}
+            self._changed = {i if i < k1 else i + 1 for i in self._changed}
+            self._removed = {i if i < k1 else i + 1 for i in self._removed}
         self._val[k1].insert(k2, value)
 
     def insert(self, key, value):
@@ -350,12 +356,12 @@ class NodeList(NodeArray):
             tmp = {}
             for k, v in self._val.items():
                 if k >= k1:
-                    tmp[k+1] = v
+                    tmp[k + 1] = v
                 else:
                     tmp[k] = v
             self._val = tmp
-            self._changed = {i if i < k1 else i+1 for i in self._changed}
-            self._removed = {i if i < k1 else i+1 for i in self._removed}
+            self._changed = {i if i < k1 else i + 1 for i in self._changed}
+            self._removed = {i if i < k1 else i + 1 for i in self._removed}
         self.__setitem__(k1, value)
 
     def append(self, value):
@@ -458,9 +464,9 @@ class NodeDict(NodeComposite):
             raise TypeError
 
     def setdefault(self, key, default=None):
-        if self._val.get(key) is None:
-            self[key] = default
-        return self[key]
+        if self._val.get(key).value() is None:
+            self.__setitem__(key, default)
+        return self.__getitem__(key)
 
     def pop(self, key, default=None):
         ret = self.get(key, default)
@@ -468,7 +474,6 @@ class NodeDict(NodeComposite):
         return ret
 
     def value(self, fields=None):
-        # return {k: v.value() for k, v in self._val.items()}
         return {i: self._cast(self.get(i)) for i in fields or self._val.keys()}
 
     def query(self):

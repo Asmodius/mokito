@@ -9,9 +9,9 @@ from errors import DataError
 
 
 class Cursor(object):
-    """ 
-    Cursor is a class used to call oeprations on a given db/collection using a specific connection
-    pool. it will transparently release connections back to the pool after they receive responses
+    """Cursor is a class used to call oeprations on a given db/collection using a specific
+    connection pool. it will transparently release connections back to the pool after they receive
+    responses
     """
 
     def __init__(self, collection, pool):
@@ -117,7 +117,7 @@ class Cursor(object):
 
         connection = yield self.__pool.get_connection()
         try:
-            request_id, data = message.query(query_options(),  self.full_collection_name, skip,
+            request_id, data = message.query(query_options(), self.full_collection_name, skip,
                                              limit, spec, fields)
             res = yield connection.send_message(request_id, data)
             request_id, data = message.kill_cursors([res['cursor_id']])
@@ -147,7 +147,7 @@ class Cursor(object):
             docs = [docs]
 
         for i in docs:
-            if not '_id' in i:
+            if '_id' not in i:
                 i['_id'] = ObjectId()
         _ids = [i['_id'] for i in docs]
 

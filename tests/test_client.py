@@ -5,7 +5,7 @@ import unittest
 from tornado.testing import gen_test
 
 import mokito
-from test_base import BaseTestCase
+from tests.util import BaseTestCase
 
 
 # TODO: add test connection pool

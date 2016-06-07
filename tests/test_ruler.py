@@ -541,7 +541,7 @@ class TestSequenceFunctions(unittest.TestCase):
         del node[0]
         self.assertEqual(node.query()['$set'], [data2])
 
-    def test_Node_query_4(self):
+    def test_Node_query_5(self):
         rul = (int, str)
         node = Node.make(rul)
         data = [random_int(), random_str()]
@@ -551,16 +551,17 @@ class TestSequenceFunctions(unittest.TestCase):
         data[0] = None
         self.assertEqual(node.query()['$set'], data)
 
-    def test_Node_query_5(self):
+    def test_Node_query_6(self):
         rul = (int, str)
         node = Node.make(rul)
         data = [random_int(), random_str()]
         node.set(data)
         node.changed_clear()
         del node[0]
-        self.assertEqual(node.query(), {'$unset': {0: ''}})
+        print node.query()
+        self.assertEqual(node.query(), {'$set': {0: None}})
 
-    def test_Node_query_5(self):
+    def test_Node_query_7(self):
         rul = {
             'x1': str,
             'x2': {
@@ -609,7 +610,7 @@ class TestSequenceFunctions(unittest.TestCase):
             '$unset': {'x2.y2': '', 'x3': ''}
         })
 
-    def test_Node_query_6(self):
+    def test_Node_query_8(self):
         rul = {
             'x1': str,
             'x2': {
