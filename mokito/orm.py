@@ -1,14 +1,17 @@
 # coding: utf-8
 
+import re
 import six
 from UserList import UserList
 
-from bson import ObjectId  # , DBRef, Code
+from bson import ObjectId
 from tornado.gen import coroutine, Return
 
 from errors import InterfaceError
 from client import Client
 from ruler import Node
+
+DEFAULT_URI = "mongodb://127.0.0.1:27017"
 
 
 class Database(object):
@@ -47,22 +50,27 @@ class Documents(UserList):
 class DocumentMeta(type):
 
     def __new__(cls, name, bases, attr):
-        for i in ['__uri__', '__database__', '__collection__', 'fields', 'roles']:
+        for i in ['__uri__', '__database__', 'fields', 'roles']:
             if i not in attr:
                 for j in bases:
                     if hasattr(j, i):
                         attr[i] = getattr(j, i)
                         break
+
+        if not attr.get('__collection__'):
+            s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+            attr['__collection__'] = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
         attr['fields'].setdefault('_id', ObjectId)
         attr['_ruler'] = Node.make(attr['fields'])
         if attr['__database__']:
-            Database.add(attr['__database__'], attr['__uri__'])
+            Database.add(attr['__database__'], attr['__uri__'] or DEFAULT_URI)
         return type.__new__(cls, name, bases, attr)
 
 
 @six.add_metaclass(DocumentMeta)
 class Document(object):
-    __uri__ = "mongodb://127.0.0.1:27017"
+    __uri__ = DEFAULT_URI
     __database__ = None
     __collection__ = None
     fields = {}
@@ -80,8 +88,12 @@ class Document(object):
     def dirty(self):
         return self._data.dirty
 
-    def __init__(self, data=None):
+    def __init__(self, *args, **kwargs):
         self._data = self._ruler()
+        data = {}
+        for i in args:
+            data.update(i)
+        data.update(kwargs)
         self._data.set(data)
 
     def __setitem__(self, name, val):

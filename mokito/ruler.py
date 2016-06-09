@@ -1,7 +1,5 @@
 # coding: utf-8
 
-# TODO: add docstring
-
 __all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
 
 SEPARATOR = '.'
