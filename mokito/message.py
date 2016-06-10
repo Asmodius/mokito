@@ -7,7 +7,12 @@ import struct
 
 from bson import BSON, _make_c_string, decode_all, DEFAULT_CODEC_OPTIONS, SON
 
-from errors import InvalidOperation, InterfaceError, DatabaseError
+from errors import (
+    MokitoEmptyBulkError,
+    MokitoDriverError,
+    MokitoMasterChangedError,
+    MokitoInvalidCursorError
+)
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -94,7 +99,7 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
     data += _make_c_string(collection_name)
     bson_data = "".join([BSON.encode(doc, check_keys) for doc in docs])
     if not bson_data:
-        raise InvalidOperation("cannot do an empty bulk insert")
+        raise MokitoEmptyBulkError()
     data += bson_data
     if safe:
         (_, insert_message) = __pack_message(OP_INSERT, data)
@@ -160,13 +165,13 @@ def unpack_response(response):
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:
         # Shouldn't get this response if we aren't doing a getMore
-        raise InterfaceError("Cursor not valid at server")
+        raise MokitoInvalidCursorError()
 
     elif response_flag & 2:
         error_object = BSON(response[20:]).decode()
         if error_object["$err"] == "not master":
-            raise DatabaseError("master has changed")
-        raise DatabaseError("database error: %s" % error_object["$err"])
+            raise MokitoMasterChangedError()
+        raise MokitoDriverError(error_object["$err"])
 
     result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
               "starting_from": struct.unpack("<i", response[12:16])[0],
@@ -177,7 +182,7 @@ def unpack_response(response):
     return result
 
 
-def _index_document(index_list):
+def index_document(index_list):
     """Helper to generate an index specifying document.
     Takes a list of (key, direction) pairs.
     """

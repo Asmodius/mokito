@@ -10,7 +10,11 @@ from tornado.gen import coroutine, Return
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 
-from errors import IntegrityError, InterfaceError
+from errors import (
+    MokitoResponseError,
+    MokitoInvalidURIError, 
+    MokitoConnectionError
+)
 from message import unpack_response
 
 
@@ -22,7 +26,7 @@ class Connection(object):
             self._host = _uri.hostname
             self._port = int(_uri.port or 27017)
         except:
-            raise InterfaceError('Invalid URI')
+            raise MokitoInvalidURIError()
 
         self._dbuser = _uri.username
         self._dbpass = _uri.password
@@ -49,25 +53,21 @@ class Connection(object):
             self.__stream = IOStream(socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0))
             self.__stream.connect((self._host, self._port))
         except socket.error as e:
-            raise InterfaceError(e)
+            raise MokitoConnectionError(e)
 
     @coroutine
     def _authorized_connect(self):
-        print 'M3'
         # yield self.e_run.wait()
         yield self.e_conn
         # self.__job_queue.append(asyncjobs.AuthorizeJob(self, self._dbuser,
         #     self._dbpass, self.__pool, err_callback))
-        print 'M4'
 
     @coroutine
     def _rs_connect(self):
-        print 'M5'
         # yield self.e_run.wait()
         yield self.e_conn
         # self.__job_queue.append(asyncjobs.ConnectRSJob(self, self._seed,
         #     self._rs, self._secondary_only, err_callback))
-        print 'M6'
 
     def close(self):
         self.__pool.cache(self)
@@ -75,7 +75,7 @@ class Connection(object):
     def _close(self):
         """close the socket and cleanup"""
         if not self.__alive:
-            raise InterfaceError('connection closed')
+            raise MokitoConnectionError('connection closed')
         # self.__job_queue = []
         self.__alive = False
         self.__stream.close()
@@ -86,7 +86,7 @@ class Connection(object):
         #             if self.__autoreconnect:
         #                 self.__connect(err_callback)
         #             else:
-        #                 raise InterfaceError('connection invalid. autoreconnect=False')
+        #                 raise MokitoConnectionError('connection invalid. autoreconnect=False')
 
         xx = Future()
         IOLoop.current().add_callback(partial(lambda x: x.set_result(None), xx))
@@ -122,5 +122,5 @@ class Connection(object):
         response = unpack_response(response)
         if response and response['data'] and response['data'][0].get('err') and \
                 response['data'][0].get('code'):
-            raise IntegrityError(response['data'][0]['err'], code=response['data'][0]['code'])
+            raise MokitoResponseError(response['data'][0]['err'], code=response['data'][0]['code'])
         raise Return(response)

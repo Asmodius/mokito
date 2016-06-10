@@ -2,7 +2,7 @@
 
 from bson import ObjectId
 from tornado.testing import gen_test
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING
 
 from tests.util import BaseTestCase
 import mokito
@@ -56,7 +56,7 @@ class CursorTestCase(BaseTestCase):
         _id = ObjectId()
         data = {'foo': 1, '_id': _id}
         yield self.db.foo.insert(data)
-        with self.assertRaises(mokito.errors.IntegrityError):
+        with self.assertRaises(mokito.errors.MokitoResponseError):
             yield self.db.foo.insert(data)
 
     @gen_test
@@ -178,7 +178,7 @@ class CursorTestCase(BaseTestCase):
         self.assertDictEqual(data1, res[0])
         self.assertDictEqual(data2, res[1])
 
-        res = yield self.db.foo.find(sort={'bar': DESCENDING})
+        res = yield self.db.foo.find(sort='-bar')
         self.assertDictEqual(data2, res[0])
         self.assertDictEqual(data1, res[1])
 

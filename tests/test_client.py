@@ -42,7 +42,7 @@ class ConnectionTestCase(BaseTestCase):
     @gen_test
     def test_uri_wrong(self):
         db = mokito.Client('wrong', "mongodb://127.0.0.1:27017aaa")
-        with self.assertRaises(mokito.errors.InterfaceError):
+        with self.assertRaises(mokito.errors.MokitoInvalidURIError):
             yield db.command('buildinfo')
 
     @gen_test

@@ -5,7 +5,7 @@ from tornado.gen import coroutine, Return
 from bson.son import SON
 
 from pool import ConnectionPool
-from errors import DataError
+from errors import MokitoParamError
 from cursor import Cursor
 
 
@@ -45,18 +45,18 @@ class Client(object):
     def get_cursor(self, collection_name):
         """Get a cursor to a collection by name.
         :param collection_name: the name of the collection
-        :raise DataError on names with unallowable characters.
+        :raise MokitoParamError on names with unallowable characters.
         """
         if not collection_name:
-            raise DataError("collection names cannot be empty")
+            raise MokitoParamError("collection names cannot be empty")
         if "$" in collection_name and \
                 not (collection_name.startswith("oplog.$main") or
                      collection_name.startswith("$cmd")):
-            raise DataError("collection names must not contain '$': %r" % collection_name)
+            raise MokitoParamError("collection names must not contain '$': %r" % collection_name)
         if collection_name.startswith(".") or collection_name.endswith("."):
-            raise DataError('collection names must not start or end with ".": %r' % collection_name)
+            raise MokitoParamError('collection names must not start or end with ".": %r' % collection_name)
         if "\x00" in collection_name:
-            raise DataError("collection names must not contain the null character")
+            raise MokitoParamError("collection names must not contain the null character")
         return Cursor(collection_name, self._pool)
 
     @coroutine

@@ -5,7 +5,8 @@ from bson import SON, ObjectId
 from tornado.gen import coroutine, Return
 
 import message
-from errors import DataError
+from errors import MokitoParamError
+from tools import fields2sort
 
 
 class Cursor(object):
@@ -37,7 +38,7 @@ class Cursor(object):
         return self._full_collection_name()
 
     @coroutine
-    def find_one(self, spec_or_id=None, fields=None, _is_command=False):
+    def find_one(self, spec_or_id=None, fields=None, skip=0, sort=None, _is_command=False):
         """Get a single document from the database.
 
         All arguments to `find` are also valid arguments for `find_one`, although any `limit`
@@ -48,9 +49,10 @@ class Cursor(object):
             try:
                 spec_or_id = {"_id": ObjectId(spec_or_id)}
             except Exception as e:
-                raise DataError(e.message)
+                raise MokitoParamError(e.message)
 
-        res = yield self.find(spec_or_id, fields, limit=1, _is_command=_is_command)
+        res = yield self.find(spec_or_id, fields, skip, limit=1,
+                              sort=sort, _is_command=_is_command)
         raise Return(res[0] if res else None)
 
     @coroutine
@@ -76,8 +78,10 @@ class Cursor(object):
             the tailable cursor documentation
             <https://docs.mongodb.com/manual/core/tailable-cursors/>
             <https://docs.mongodb.com/manual/reference/method/cursor.tailable/>
-        :param sort: (optional): a list of (key, direction) pairs specifying the sort order for this
-            query. See `pymongo.cursor.Cursor.sort` for details.
+        :param sort: (optional):
+            1) a list of (key, direction) pairs specifying the sort order for this query. See
+               `pymongo.cursor.Cursor.sort` for details.
+            2) a field name or list of field names with the sign of sorting direction ['f1', '-f2']
         :param max_scan: (optional): limit the number of documents examined when performing the
             query
         :param _is_command:
@@ -96,9 +100,7 @@ class Cursor(object):
             spec = SON({"$query": spec})
 
         if sort:
-            if isinstance(sort, dict):
-                sort = [(k, v) for k, v in sort.items()]
-            sort = message._index_document(sort)
+            sort = message.index_document(fields2sort(sort))
             if sort:
                 spec["$orderby"] = sort
 

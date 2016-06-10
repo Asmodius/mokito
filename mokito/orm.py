@@ -7,7 +7,7 @@ from UserList import UserList
 from bson import ObjectId
 from tornado.gen import coroutine, Return
 
-from errors import InterfaceError
+from errors import MokitoORMError
 from client import Client
 from ruler import Node
 
@@ -116,7 +116,7 @@ class Document(object):
         try:
             return Database.get(cls.__database__)[cls.__collection__]
         except KeyError:
-            raise InterfaceError('Connection to the database "%s" not found' % cls.__database__)
+            raise MokitoORMError('Connection to the database "%s" not found' % cls.__database__)
 
     def dirty_clear(self):
         self._data.changed_clear()
@@ -133,11 +133,9 @@ class Document(object):
 
     @classmethod
     @coroutine
-    def find(cls, spec=None, skip=0, limit=0, snapshot=False, tailable=False,
-             sort=None, max_scan=None, hint=None):
+    def find(cls, spec=None, skip=0, limit=0, sort=None, hint=None):
         cur = cls._cursor()
-        data = yield cur.find(spec, cls.fields.keys(), skip, limit, snapshot,
-                              tailable, sort, max_scan, False, hint)
+        data = yield cur.find(spec, cls.fields.keys(), skip, limit, sort=sort, hint=hint)
         res = Documents(cls(i) for i in data)
         res.dirty_clear()
         raise Return(res)
@@ -156,6 +154,9 @@ class Document(object):
             cur = self._cursor()
             yield cur.update({"_id": self._data['_id'].value()}, self._data.query(), upsert=True)
             self.dirty_clear()
+
+    def validate(self):
+        pass
 
     def to_json(self, role=None, no_id=False):
         fields = set(self.roles[role] if role else self.fields.keys())

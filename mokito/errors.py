@@ -5,42 +5,50 @@ class MokitoError(Exception):
     """Base class for all exceptions. """
 
 
-class InvalidOperation(MokitoError):
-    """Raised when a client attempts to perform an invalid operation."""
-
-
-class InterfaceError(MokitoError):
+class MokitoDriverError(MokitoError):
     pass
 
 
-class RSConnectionError(InterfaceError):
+class MokitoEmptyBulkError(MokitoDriverError):
+    message = "cannot do an empty bulk insert"
+
+
+class MokitoMasterChangedError(MokitoDriverError):
+    message = "master has changed"
+
+
+class MokitoInvalidURIError(MokitoDriverError):
+    message = "Invalid URI"
+
+
+class MokitoInvalidCursorError(MokitoDriverError):
+    message = "Cursor not valid at server"
+
+
+class MokitoParamError(MokitoDriverError):
+    message = "Invalid parameters"
+
+
+class MokitoConnectionError(MokitoDriverError):
     pass
 
 
-class DatabaseError(MokitoError):
-    pass
-
-
-class DataError(DatabaseError):
-    pass
-
-
-class IntegrityError(DatabaseError):
+class MokitoResponseError(MokitoDriverError):
 
     def __init__(self, msg, code=None):
         self.code = code
         self.msg = msg
 
     def __unicode__(self):
-        return u'IntegrityError: %s code:%s' % (self.msg, self.code or '')
+        return u'Response error: %s code:%s' % (self.msg, self.code or '')
 
     def __str__(self):
         return str(self.__unicode__())
 
 
-class TooManyConnections(MokitoError):
+class TooManyConnections(MokitoDriverError):
     pass
 
 
-class AuthenticationError(MokitoError):
+class MokitoORMError(MokitoError):
     pass

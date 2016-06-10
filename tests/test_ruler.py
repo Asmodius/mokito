@@ -558,7 +558,6 @@ class TestSequenceFunctions(unittest.TestCase):
         node.set(data)
         node.changed_clear()
         del node[0]
-        print node.query()
         self.assertEqual(node.query(), {'$set': {0: None}})
 
     def test_Node_query_7(self):
