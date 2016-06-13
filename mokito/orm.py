@@ -2,6 +2,7 @@
 
 import re
 import six
+import itertools
 from UserList import UserList
 
 from bson import ObjectId
@@ -37,14 +38,10 @@ class Documents(UserList):
         return '<%s: [%s]>' % (self.__class__.__name__, ', '.join(map(str, self.data)))
 
     def dirty_clear(self):
-        for i in self.data:
-            i.dirty_clear()
+        map(lambda i: i.dirty_clear(), self.data)
 
-    def to_json(self, role=None, no_id=False):
-        result = []
-        for i in self.data:
-            result.append(i.to_json(role, no_id))
-        return result
+    def to_json(self, *role, **kwargs):
+        return [i.to_json(*role, **kwargs) for i in self.data]
 
 
 class DocumentMeta(type):
@@ -147,6 +144,13 @@ class Document(object):
         data = yield cur.count(spec)
         raise Return(data)
 
+    @classmethod
+    @coroutine
+    def distinct(cls, key, spec=None):
+        cur = cls._cursor()
+        data = yield cur.distinct(key, spec)
+        raise Return(data)
+
     @coroutine
     def save(self):
         self._data.setdefault('_id', ObjectId())
@@ -158,8 +162,16 @@ class Document(object):
     def validate(self):
         pass
 
-    def to_json(self, role=None, no_id=False):
-        fields = set(self.roles[role] if role else self.fields.keys())
+    def to_json(self, *role, **kwargs):
+        """
+        converts the attributes into a dictionary
+        :param role: Role name or list of role name. The role needs to be defined in the class
+            attribute "roles". If the role is None then converted all the fields.
+        :param kwargs:
+            no_id: Return dict without _id
+        :return: dict
+        """
+        fields = set(itertools.chain(*[self.roles[i] for i in role]) if role else self.fields.keys())
         if '_id' in fields:
             fields.remove('_id')
 
@@ -172,7 +184,7 @@ class Document(object):
                 _fields.add(i)
         data.update(self._data.value(_fields))
 
-        if not no_id:
+        if not kwargs.get('no_id'):
             data['_id'] = str(self._data['_id'])
 
         return data

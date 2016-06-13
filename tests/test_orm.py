@@ -44,8 +44,8 @@ class TestClass(Document):
     def prop(self):
         return '%s:%s' % (self['f_1'], self['f_2'])
 
-    def to_json(self, role=None, no_id=False):
-        ret = super(TestClass, self).to_json(role, no_id)
+    def to_json(self, *role, **kwargs):
+        ret = super(TestClass, self).to_json(*role, **kwargs)
         if 'f_5' in ret:
             ret['f_5'] = ret['f_5'].strftime("%B %d, %Y")
         return ret
@@ -246,3 +246,11 @@ class ORMTestCase(AsyncTestCase):
         x = yield TestClass.from_json(data)
         self.assertTrue(x.dirty)
         self.assertDictEqual(x._data.query(), {'$set': {'f_0': 'foo'}})
+
+    @gen_test
+    def test_distinct(self):
+        x = yield TestClass.distinct('f_0')
+        self.assertListEqual(x, [self.data1['f_0'], self.data2['f_0']])
+
+        x = yield TestClass.distinct('f_0', {'f_1': self.data1['f_1']})
+        self.assertListEqual(x, [self.data1['f_0']])

@@ -239,3 +239,25 @@ class CursorTestCase(BaseTestCase):
         self.assertEqual(_id2, res)
         res = yield self.db.foo.find_one(_id2)
         self.assertDictEqual(data2, res)
+
+    @gen_test
+    def test_distinct_1(self):
+        _id1 = ObjectId()
+        data1 = {'_id': _id1, 'bar': 1, 'foo': 'foo'}
+        _id2 = ObjectId()
+        data2 = {'_id': _id2, 'bar': 2, 'foo': 'foo'}
+        yield self.db.foo.insert([data1, data2])
+
+        res = yield self.db.foo.distinct('bar')
+        self.assertListEqual(res, [1, 2])
+
+    @gen_test
+    def test_distinct_2(self):
+        _id1 = ObjectId()
+        data1 = {'_id': _id1, 'bar': 1, 'foo': 'foo'}
+        _id2 = ObjectId()
+        data2 = {'_id': _id2, 'bar': 2, 'foo': 'bar'}
+        yield self.db.foo.insert([data1, data2])
+
+        res = yield self.db.foo.distinct('bar', {'foo': 'bar'})
+        self.assertListEqual(res, [2])

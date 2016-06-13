@@ -171,7 +171,7 @@ def unpack_response(response):
         error_object = BSON(response[20:]).decode()
         if error_object["$err"] == "not master":
             raise MokitoMasterChangedError()
-        raise MokitoDriverError(error_object["$err"])
+        raise MokitoDriverError("MongoDB: %s" % error_object["$err"])
 
     result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
               "starting_from": struct.unpack("<i", response[12:16])[0],

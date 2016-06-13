@@ -157,8 +157,8 @@ class Cursor(object):
 
         connection = yield self.__pool.get_connection()
         try:
-            request_id, data = message.insert(self.full_collection_name, docs, check_keys, safe,
-                                              kwargs)
+            request_id, data = message.insert(self.full_collection_name, docs,
+                                              check_keys, safe, kwargs)
             yield connection.send_message(request_id, data, safe)
         except:
             connection.close()
@@ -169,8 +169,8 @@ class Cursor(object):
         raise Return(_ids)
 
     @coroutine
-    def update(self, spec, document, upsert=False, safe=True, multi=False, no_replace=False,
-               **kwargs):
+    def update(self, spec, document, upsert=False, safe=True, multi=False,
+               no_replace=False, **kwargs):
         """Update a document(s) in this collection.
 
         :param spec: a dict or bson.son.SON instance specifying elements which must be present for
@@ -246,22 +246,36 @@ class Cursor(object):
             raise Return(res['data'][0].get('n', 0))
 
     @coroutine
-    def count(self, spec=None):
-        def query_options():
-            options = 0
-            return options
-
+    def count(self, spec=None, hint=None):
         if spec is None:
             spec = {}
         spec = SON({'count': self.__collection, "query": spec})
 
+        if hint:
+            spec["$hint"] = hint
+
         connection = yield self.__pool.get_connection()
         try:
-            request_id, data = message.query(query_options(), self._full_collection_name('$cmd'), 0,
-                                             -1, spec)
+            request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
             res = yield connection.send_message(request_id, data)
         except:
             connection.close()
             raise
 
         raise Return(res['data'][0]['n'])
+
+    @coroutine
+    def distinct(self, key, spec=None):
+        if spec is None:
+            spec = {}
+        spec = SON({"distinct": self.__collection, "key": key, "query": spec})
+
+        connection = yield self.__pool.get_connection()
+        try:
+            request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
+            res = yield connection.send_message(request_id, data)
+        except:
+            connection.close()
+            raise
+
+        raise Return(res['data'][0]['values'])

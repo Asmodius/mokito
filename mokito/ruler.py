@@ -4,8 +4,6 @@ __all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
 
 SEPARATOR = '.'
 
-# TODO: Node.value(fields=None)
-
 
 class Node(object):
     def __init__(self, rules):
@@ -82,8 +80,8 @@ class Node(object):
     def changed_clear(self):
         self._changed = False
 
-    def value(self):
-        return self._val
+    def value(self, default=None):
+        return default if self._val is None else self._val
 
     @property
     def dirty(self):
@@ -104,7 +102,7 @@ class NodeComposite(Node):
     def __contains__(self, item):
         raise NotImplemented
 
-    def __getitem__(self, key, default=None):
+    def __getitem__(self, key):
         raise NotImplemented
 
     def _del_sub_item(self, k1, k2):
@@ -119,9 +117,6 @@ class NodeComposite(Node):
     def _dec_changed(self, key):
         self._changed.discard(key)
         self._removed.add(key)
-
-    def get(self, key, default=None):
-        return self.__getitem__(key, default)
 
     def clear(self):
         self._val = {}
@@ -161,10 +156,10 @@ class NodeArray(NodeComposite):
                 ret.append('...')
         return "<%s: [%s]>" % (self.__class__.__name__, ','.join(ret))
 
-    def __getitem__(self, key, default=None):
+    def __getitem__(self, key):
         k1, _, k2 = str(key).partition(SEPARATOR)
         k1 = int(k1)
-        ret = self._val.get(k1, default)
+        ret = self._val.get(k1)
         if k2:
             ret = ret[k2] if isinstance(ret, NodeComposite) else None
         return ret
@@ -217,10 +212,14 @@ class NodeArray(NodeComposite):
                 return ret
         return ret
 
-    def value(self, fields=None):
+    def value(self, fields=None, default=None):
         if fields:
-            return [self.__getitem__(i) for i in fields]
-        return self[:]
+            ret = [self.__getitem__(i) for i in fields]
+        else:
+            ret = self[:]
+        if default and not ret:
+            ret = default
+        return ret
 
 
 class NodeTuple(NodeArray):
@@ -382,9 +381,9 @@ class NodeDict(NodeComposite):
     def __len__(self):
         return len(self._val)
 
-    def __getitem__(self, key, default=None):
+    def __getitem__(self, key):
         k1, _, k2 = str(key).partition(SEPARATOR)
-        ret = self._val.get(k1, default)
+        ret = self._val.get(k1)
         if k2:
             ret = ret[k2] if isinstance(ret, NodeComposite) else None
         return ret
@@ -471,8 +470,11 @@ class NodeDict(NodeComposite):
         self.__delitem__(key)
         return ret
 
-    def value(self, fields=None):
-        return {i: self._cast(self.get(i)) for i in fields or self._val.keys()}
+    def value(self, fields=None, default=None):
+        ret = {i: self._cast(self.__getitem__(i)) for i in fields or self._val.keys()}
+        if default and not ret:
+            ret = default
+        return ret
 
     def query(self):
         ret = {"$set": {}, "$unset": {}}
