@@ -43,7 +43,10 @@ class Node(object):
 
     @staticmethod
     def _cast(other):
-        return other.value() if isinstance(other, Node) else other
+        ret = other.value() if isinstance(other, Node) else other
+        if isinstance(ret, unicode):
+            ret = ret.encode('utf-8')
+        return ret
 
     @staticmethod
     def _normalize(data_type):
@@ -496,3 +499,6 @@ class NodeDict(NodeComposite):
         if not ret["$unset"]:
             del ret["$unset"]
         return ret
+
+    def is_dirty(self, key):
+        return key in self._changed or key in self._removed

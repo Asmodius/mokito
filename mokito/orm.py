@@ -118,6 +118,9 @@ class Document(object):
     def dirty_clear(self):
         self._data.changed_clear()
 
+    def is_dirty(self, key):
+        return self._data.is_dirty(key)
+
     @classmethod
     @coroutine
     def find_one(cls, spec_or_id=None):
