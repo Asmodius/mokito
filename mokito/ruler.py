@@ -1,14 +1,17 @@
 # coding: utf-8
 
-__all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
+from bson import DBRef
 
-SEPARATOR = '.'
+from tools import KnownClasses, SEPARATOR
+
+# __all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
 
 
 class Node(object):
     def __init__(self, rules):
         self._changed = False
         self._val = None
+        self._been_set = False
         self._rules = self._normalize(rules)
 
     def __call__(self):
@@ -64,6 +67,8 @@ class Node(object):
             return NodeList(data_type)
         elif isinstance(data_type, tuple):
             return NodeTuple(data_type)
+        elif data_type in KnownClasses:
+            return NodeDocument(data_type)
         else:
             return Node(data_type)
 
@@ -80,18 +85,106 @@ class Node(object):
         self._changed = False
         self._val = None
 
-    def changed_clear(self):
+    def dirty_clear(self):
         self._changed = False
 
     def value(self, default=None):
         return default if self._val is None else self._val
 
+    def keys(self):
+        return []
+
     @property
     def dirty(self):
         return self._changed
 
+    @property
+    def been_set(self):
+        return self._been_set
+
+    @property
     def query(self):
         return {"$set": self._val}
+
+
+class NodeDocument(Node):
+    def __init__(self, rules):
+        self._rules = KnownClasses.get(rules)
+        self._val = None
+        self._been_set = False
+
+    def set(self, value):
+        if isinstance(value, DBRef):
+            if value.collection != self._rules.__collection__:
+                raise ValueError('Wrong collection name: %s and %s' %
+                                 (value.collection, self._rules.__collection__))
+            if not (self._val and self._val.pk == value.id):
+                self._val = self._rules(_id=value.id)
+
+        elif hasattr(value, 'dbref') and hasattr(value, '_data') and \
+                isinstance(value._data, NodeDict):
+            if value.dbref != self.dbref or value.dirty or self.dirty:
+                self._val = value
+                return True
+            else:
+                return False
+
+        else:
+            value = self._cast(value)
+            if not isinstance(value, dict):
+                raise ValueError
+            self._val = self._rules(value)
+            self._been_set = True
+
+    def __getitem__(self, key):
+        if self._been_set:
+            return self._val.__getitem__(key)
+        raise ValueError('The document is not loaded')
+
+    def __setitem__(self, key, value):
+        if self._been_set:
+            self._val.__setitem__(key, value)
+            return False
+        raise ValueError('The document is not loaded')
+
+    def dirty_clear(self):
+        if self._been_set and self._val is not None:
+            self._val._data.dirty_clear()
+
+    # def keys(self):
+    #     return []
+
+    @property
+    def dirty(self):
+        if self._been_set and self._val is not None:
+            return self._val._data.dirty
+        return False
+
+    @property
+    def query(self):
+        if self._val is not None:
+            return self._val._data.query
+        raise ValueError('The document is not loaded')
+
+    @property
+    def dbref(self):
+        if self._val is not None:
+            return self._val.dbref
+
+    def save(self):
+        if self._val is not None:
+            return self._val.save()
+        raise ValueError('The document is not loaded')
+
+    @property
+    def pk(self):
+        if self._val is not None:
+            return self._val.pk
+
+    @property
+    def fields(self):
+        if self._val is not None:
+            return self._val.fields
 
 
 class NodeComposite(Node):
@@ -126,10 +219,10 @@ class NodeComposite(Node):
         self._changed.clear()
         self._removed.clear()
 
-    def changed_clear(self):
+    def dirty_clear(self):
         self._changed.clear()
         self._removed.clear()
-        map(lambda i: i.changed_clear(), self._val.values())
+        map(lambda i: i.dirty_clear(), self._val.values())
 
     def insert(self, key, value):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -140,9 +233,13 @@ class NodeComposite(Node):
     @property
     def dirty(self):
         for k, v in self._val.items():
-            if v.dirty:
+            if not isinstance(v, NodeDocument) and v.dirty:
                 self._inc_changed(k)
         return bool(self._changed or self._removed)
+
+    @property
+    def query(self):
+        raise NotImplemented
 
 
 class NodeArray(NodeComposite):
@@ -164,7 +261,7 @@ class NodeArray(NodeComposite):
         k1 = int(k1)
         ret = self._val.get(k1)
         if k2:
-            ret = ret[k2] if isinstance(ret, NodeComposite) else None
+            ret = ret[k2] if isinstance(ret, (NodeComposite, NodeDocument)) else None
         return ret
 
     def __setitem__(self, key, value):
@@ -204,6 +301,9 @@ class NodeArray(NodeComposite):
 
     def __radd__(self, other):
         return self._cast(other) + self.value()
+
+    def keys(self):
+        return self._val.keys()
 
     def set(self, value):
         ret = False
@@ -275,6 +375,7 @@ class NodeTuple(NodeArray):
         self._changed.clear()
         self._removed.clear()
 
+    @property
     def query(self):
         if not self._changed:
             if self._removed:
@@ -367,6 +468,7 @@ class NodeList(NodeArray):
     def append(self, value):
         self[len(self)] = value
 
+    @property
     def query(self):
         ret = [self._val[i].value() if i in self._val else None for i in range(len(self))]
         return {"$set": ret}
@@ -388,7 +490,7 @@ class NodeDict(NodeComposite):
         k1, _, k2 = str(key).partition(SEPARATOR)
         ret = self._val.get(k1)
         if k2:
-            ret = ret[k2] if isinstance(ret, NodeComposite) else None
+            ret = ret[k2] if isinstance(ret, (NodeComposite, NodeDocument)) else None
         return ret
 
     def __setitem__(self, key, value):
@@ -406,9 +508,11 @@ class NodeDict(NodeComposite):
                 self._val[k1] = self.make(self._rules.get(k1))
             else:
                 raise KeyError(k1)
+
         if (k2 and self._val[k1].__setitem__(k2, value)) or self._val[k1].set(value):
             self._inc_changed(k1)
             return True
+
         return False
 
     def __delitem__(self, key):
@@ -428,6 +532,9 @@ class NodeDict(NodeComposite):
     def __contains__(self, item):
         return item in self._val
 
+    def keys(self):
+        return self._rules.keys() if self._rules else self._val.keys()
+
     def set(self, value):
         ret = False
         if isinstance(value, dict):
@@ -443,9 +550,6 @@ class NodeDict(NodeComposite):
         self._val = {k: self.make(v) for k, v in self._rules.items()}
         self._changed.clear()
         self._removed.clear()
-
-    def keys(self):
-        return self._val.keys()
 
     def items(self):
         return self.value().items()
@@ -468,37 +572,35 @@ class NodeDict(NodeComposite):
             self.__setitem__(key, default)
         return self.__getitem__(key)
 
-    def pop(self, key, default=None):
-        ret = self.get(key, default)
-        self.__delitem__(key)
-        return ret
-
     def value(self, fields=None, default=None):
         ret = {i: self._cast(self.__getitem__(i)) for i in fields or self._val.keys()}
         if default and not ret:
             ret = default
         return ret
 
+    @property
     def query(self):
         ret = {"$set": {}, "$unset": {}}
         if self._rules and self._removed:
             ret["$unset"] = {i: "" for i in self._removed}
 
         for i in self._changed:
-            _q = self._val[i].query()
-            for j in ["$set", "$unset"]:
-                if j in _q:
-                    _v = _q[j]
-                    if isinstance(_v, dict):
-                        for k, v in _v.items():
-                            ret[j]["%s.%s" % (i, k)] = v
-                    else:
-                        ret[j][i] = _v
+            v = self._val[i]
+            if isinstance(v, NodeDocument):
+                ret["$set"][i] = v.dbref
+
+            else:
+                _q = v.query
+                for j in ["$set", "$unset"]:
+                    if j in _q:
+                        _v = _q[j]
+                        if isinstance(_v, dict):
+                            for k, v in _v.items():
+                                ret[j]["%s.%s" % (i, k)] = v
+                        else:
+                            ret[j][i] = _v
         if not ret["$set"]:
             del ret["$set"]
         if not ret["$unset"]:
             del ret["$unset"]
         return ret
-
-    def is_dirty(self, key):
-        return key in self._changed or key in self._removed

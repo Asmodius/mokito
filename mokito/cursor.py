@@ -16,7 +16,7 @@ class Cursor(object):
     """
 
     def __init__(self, collection, pool):
-        assert isinstance(collection, (str, unicode))
+        assert isinstance(collection, basestring)
         assert isinstance(pool, object)
 
         self.__collection = collection
@@ -59,9 +59,7 @@ class Cursor(object):
     def find(self, spec=None, fields=None, skip=0, limit=0, snapshot=False, tailable=False,
              sort=None, max_scan=None, _is_command=False, hint=None):
         """Query the database.
-
-        :param spec: (optional): a SON object specifying elements which must be present for a
-            document to be included in the result set
+        :param spec: (optional): _id or dict
         :param fields: (optional): a list of field names that should be returned in the result set
             ("_id" will always be included), or a dict specifying the fields to return
         :param skip: (optional): the number of documents to omit (from the start of the result set)
@@ -96,6 +94,8 @@ class Cursor(object):
 
         if spec is None:
             spec = {}
+        elif isinstance(spec, ObjectId):
+            spec = {"_id": spec}
         if not _is_command and "$query" not in spec:
             spec = SON({"$query": spec})
 

@@ -32,7 +32,6 @@ class Client(object):
         """
         self._pool = ConnectionPool(uri, db_name, max_cached, max_connections, **kwargs)
         self._db_name = db_name
-        # Database.set(db_name, self)
 
     def __getattr__(self, name):
         """Get a collection by name."""

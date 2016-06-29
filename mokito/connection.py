@@ -12,7 +12,7 @@ from tornado.ioloop import IOLoop
 
 from errors import (
     MokitoResponseError,
-    MokitoInvalidURIError, 
+    MokitoInvalidURIError,
     MokitoConnectionError
 )
 from message import unpack_response
