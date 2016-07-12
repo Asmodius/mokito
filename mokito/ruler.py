@@ -4,8 +4,6 @@ from bson import DBRef
 
 from tools import KnownClasses, SEPARATOR
 
-# __all__ = ["Node", "NodeTuple", "NodeList", "NodeDict"]
-
 
 class Node(object):
     def __init__(self, rules):
@@ -151,9 +149,6 @@ class NodeDocument(Node):
         if self._been_set and self._val is not None:
             self._val._data.dirty_clear()
 
-    # def keys(self):
-    #     return []
-
     @property
     def dirty(self):
         if self._been_set and self._val is not None:
@@ -168,8 +163,10 @@ class NodeDocument(Node):
 
     @property
     def dbref(self):
+        # TODO: add multi DB
         if self._val is not None:
             return self._val.dbref
+        return DBRef(self._rules.__collection__, None)
 
     def save(self):
         if self._val is not None:
@@ -230,12 +227,18 @@ class NodeComposite(Node):
             self._val[k1].insert(k2, value)
         raise AttributeError('object has no attribute "insert"')
 
-    @property
-    def dirty(self):
+    def _dirty_keys(self):
         for k, v in self._val.items():
             if not isinstance(v, NodeDocument) and v.dirty:
                 self._inc_changed(k)
-        return bool(self._changed or self._removed)
+        return self._changed | self._removed
+
+    def is_dirty(self, *keys):
+        return set(keys) & self._dirty_keys()
+
+    @property
+    def dirty(self):
+        return bool(self._dirty_keys())
 
     @property
     def query(self):
@@ -377,6 +380,7 @@ class NodeTuple(NodeArray):
 
     @property
     def query(self):
+        # TODO: не весь _val а только измененные
         if not self._changed:
             if self._removed:
                 return {"$set": {i: None for i in self._removed}}
@@ -470,6 +474,7 @@ class NodeList(NodeArray):
 
     @property
     def query(self):
+        # TODO: не весь _val а только измененные
         ret = [self._val[i].value() if i in self._val else None for i in range(len(self))]
         return {"$set": ret}
 

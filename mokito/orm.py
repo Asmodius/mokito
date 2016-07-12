@@ -7,6 +7,7 @@ from UserList import UserList
 
 from bson import ObjectId, DBRef
 from tornado.gen import coroutine, Return
+from tornado.concurrent import is_future
 
 from errors import MokitoORMError
 from ruler import Node, NodeDocument
@@ -16,7 +17,14 @@ from database import Database
 DEFAULT_URI = "mongodb://127.0.0.1:27017"
 
 
+# TODO: добавить self.set(data)
+# PS. все таки надо переписывать ruler.NodeDocument и Document
+# PPS. и подумать на предмет отказаться от node.value()
+# PPPS. но это уже в версии 0.2
+
+
 class Documents(UserList):
+    # TODO: а этот класс поменять на ruler.NodeArray
 
     def __repr__(self):
         return '<%s: [%s]>' % (self.__class__.__name__, ', '.join(map(str, self.data)))
@@ -25,8 +33,8 @@ class Documents(UserList):
         map(lambda i: i.dirty_clear(), self.data)
 
     @coroutine
-    def preload(self):
-        yield [i.preload() for i in self.data]
+    def preload(self, *fields):
+        yield [i.preload(*fields) for i in self.data]
 
     @coroutine
     def to_json(self, *role, **kwargs):
@@ -64,25 +72,6 @@ class Document(object):
     fields = {}
     roles = {}
 
-    @property
-    def _id(self):
-        return self._data['_id'].value()
-
-    @property
-    def pk(self):
-        return self._data['_id'].value()
-
-    def value(self, default=None):
-        return self._data.value(default)
-
-    @property
-    def dirty(self):
-        return self._data.dirty
-
-    @property
-    def dbref(self):
-        return DBRef(self.__collection__, self._id)
-
     def __init__(self, *args, **kwargs):
         self._data = self._ruler()
         data = {}
@@ -110,6 +99,31 @@ class Document(object):
     def __str__(self):
         return str(self.__unicode__())
 
+    @property
+    def pk(self):
+        return self._data['_id'].value()
+
+    @property
+    def _id(self):
+        return str(self._data['_id'].value())
+
+    @property
+    def dbref(self):
+        return DBRef(self.__collection__, self.pk)
+
+    @property
+    def dirty(self):
+        return self._data.dirty
+
+    def dirty_clear(self):
+        self._data.dirty_clear()
+
+    def is_dirty(self, *keys):
+        return self._data.is_dirty(*keys)
+
+    def value(self, default=None):
+        return self._data.value(default)
+
     @classmethod
     def _cursor(cls, database=None, collection=None):
         db = database or cls.__database__
@@ -117,12 +131,6 @@ class Document(object):
             return Database.get(db)[collection or cls.__collection__]
         except KeyError:
             raise MokitoORMError('Connection to the database "%s" not found' % db)
-
-    def dirty_clear(self):
-        self._data.dirty_clear()
-
-    def is_dirty(self, key):
-        return self._data.is_dirty(key)
 
     @coroutine
     def __preload(self, node, cash, *fields):
@@ -140,7 +148,7 @@ class Document(object):
             if isinstance(_node, NodeDocument):
                 if not _node.been_set or _node.dirty:
                     dbref = _node.dbref
-                    if dbref and dbref.id is not None:
+                    if dbref.id is not None:
                         data = cash.get(dbref)
                         if not data:
                             cur = self._cursor(dbref.database, dbref.collection)
@@ -158,6 +166,13 @@ class Document(object):
 
     @classmethod
     @coroutine
+    def find_one_raw(cls, spec_or_id, *fields):
+        cur = cls._cursor()
+        data = yield cur.find_one(spec_or_id, fields=fields)
+        raise Return(data)
+
+    @classmethod
+    @coroutine
     def find_one(cls, spec_or_id, preload=False):
         cur = cls._cursor()
         data = yield cur.find_one(spec_or_id, fields=cls.fields.keys())
@@ -167,6 +182,13 @@ class Document(object):
             if preload:
                 yield self.preload()
             raise Return(self)
+
+    @classmethod
+    @coroutine
+    def find_raw(cls, spec=None, *fields):
+        cur = cls._cursor()
+        data = yield cur.find(spec, fields=fields)
+        raise Return(data)
 
     @classmethod
     @coroutine
@@ -201,40 +223,42 @@ class Document(object):
             yield cur.update({"_id": self._data['_id'].value()}, self._data.query, upsert=True)
             self.dirty_clear()
 
-    def validate(self):
-        pass
+    @coroutine
+    def remove(self, safe=False):
+        cur = cls._cursor()
+        yield cur.remove(self['_id'].value(), safe)
+        self['_id'] = None
 
     @coroutine
-    def to_json(self, *role, **kwargs):
+    def to_json(self, *role):
         """
         converts the attributes into a dictionary
         :param role: Role name or list of role name. The role needs to be defined in the class
             attribute "roles". If the role is None then converted all the fields.
-        :param kwargs:
-            no_id: Return dict without _id
         :return: dict
         """
         fields = set(itertools.chain(*[self.roles[i] for i in role]) if role else self.fields.keys())
-        if '_id' in fields:
-            fields.remove('_id')
-
         data = {}
         _fields = set()
         for i in fields:
             if hasattr(self, i):
-                data[i] = getattr(self, i)
+                v = getattr(self, i)
+                if is_future(v):
+                    v = yield v
+                data[i] = v
             else:
                 _fields.add(i)
 
         yield self.preload(*_fields)
         for i in _fields:
-            v = self._data[i].value()
-            if isinstance(v, Document):
-                v = yield v.to_json()
+            try:
+                v = self._data[i].value()
+            except ValueError:
+                v = None
+            else:
+                if isinstance(v, Document):
+                    v = yield v.to_json()
             data[i] = v
-
-        if not kwargs.get('no_id'):
-            data['_id'] = str(self._data['_id'])
 
         raise Return(data)
 
