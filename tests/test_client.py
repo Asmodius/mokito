@@ -47,7 +47,7 @@ class ConnectionTestCase(BaseTestCase):
 
     @gen_test
     def test_collection_names(self):
-        col = ['foo', 'bar']
+        col = [u'foo', u'bar']
         for i in col:
             yield self.db[i].insert({'foo': 1})
         res = yield self.db.collection_names()

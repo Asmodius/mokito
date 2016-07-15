@@ -112,8 +112,8 @@ class TestClass2(mokito.orm.Document):
         return '%s:%s' % (self['f_1'], self['f_2'])
 
     @coroutine
-    def to_json(self, *role, **kwargs):
-        ret = yield super(TestClass2, self).to_json(*role, **kwargs)
+    def to_json(self, *role):
+        ret = yield super(TestClass2, self).to_json(*role)
         if 'f_5' in ret:
             ret['f_5'] = ret['f_5'].strftime("%B %d, %Y")
         raise Return(ret)

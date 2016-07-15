@@ -14,6 +14,8 @@ from tests.util import (
     TestClass2
 )
 
+# TODO: add test  Node['foo.bar.baz'] = 1
+
 
 class TestSequenceFunctions(unittest.TestCase):
 

@@ -153,7 +153,7 @@ class ORMTestCase(AsyncTestCase):
     def test_to_json_2(self):
         x = yield TestClass2.find_one(self._id2_a)
 
-        data1 = yield x.to_json('role_1', no_id=True)
+        data1 = yield x.to_json('role_1')
         data2 = {
             'f_0': self.data2_a['f_0'],
             'f_5': self.data2_a['f_5'].strftime("%B %d, %Y"),
@@ -162,14 +162,13 @@ class ORMTestCase(AsyncTestCase):
         self.assertDictEqual(data1, data2)
 
         data1 = yield x.to_json('role_1')
-        data2['_id'] = str(self._id2_a)
         self.assertDictEqual(data1, data2)
 
     @gen_test
     def test_to_json_3(self):
         x = yield TestClass2.find_one(self._id2_a)
 
-        data1 = yield x.to_json('role_2', no_id=True)
+        data1 = yield x.to_json('role_2')
         data2 = {
             'f_7': self.data2_a['f_7'],
             'f_10.0': self.data2_a['f_10'][0],
@@ -178,7 +177,6 @@ class ORMTestCase(AsyncTestCase):
         self.assertDictEqual(data1, data2)
 
         data1 = yield x.to_json('role_2')
-        data2['_id'] = str(self._id2_a)
         self.assertDictEqual(data1, data2)
 
     @gen_test
@@ -292,7 +290,6 @@ class ORMTestCase(AsyncTestCase):
         x = yield TestClass2.find_one(self._id2_a)
         data1 = yield x.to_json('role_3')
         data2 = {
-            '_id': str(self._id2_a),
             'f_11': {
                 '_id': str(self._id1_a),
                 'f_0': self.data1_a['f_0'],
@@ -303,7 +300,7 @@ class ORMTestCase(AsyncTestCase):
 
         data1 = yield x.to_json('role_4')
         data2 = {
-            '_id': str(self._id2_a),
+            # '_id': str(self._id2_a),
             'f_12.0': {
                 '_id': str(self._id1_b),
                 'f_0': self.data1_b['f_0'],
