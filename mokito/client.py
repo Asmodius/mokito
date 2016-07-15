@@ -11,7 +11,7 @@ from cursor import Cursor
 
 class Client(object):
 
-    def __init__(self, db_name, uri, max_cached=0, max_connections=0, **kwargs):
+    def __init__(self, db_name, uri, cache_size=10):
         """
         Client connection to represent a remote database.
 
@@ -20,17 +20,14 @@ class Client(object):
 
         :param db_name: mongo database name
         :param uri: connection uri string
-        :param max_cached: (optional): maximum inactive cached connections for this pool. 0 for
-            unlimited
-        :param max_connections: (optional): maximum open connections for this pool. 0 for unlimited
-        :param kwargs: passed to `connection.Connection`
-        :return a `Client` instance that wraps a `pool.ConnectionPool`
+        :param cache_size: maximum inactive cached connections for this pool
+        :return a Client instance that wraps a pool.ConnectionPool
 
         Usage:
             >>> db = mokito.Client('db_name', 'mongodb://127.0.0.1:27017')
             >>> yield db.collection_name.find({...})
         """
-        self._pool = ConnectionPool(uri, db_name, max_cached, max_connections, **kwargs)
+        self._pool = ConnectionPool(uri, db_name, cache_size)
         self._db_name = db_name
 
     def __getattr__(self, name):

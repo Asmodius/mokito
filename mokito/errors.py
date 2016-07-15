@@ -46,9 +46,5 @@ class MokitoResponseError(MokitoDriverError):
         return str(self.__unicode__())
 
 
-class TooManyConnections(MokitoDriverError):
-    pass
-
-
 class MokitoORMError(MokitoError):
     pass
