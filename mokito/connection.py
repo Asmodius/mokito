@@ -45,7 +45,8 @@ class Connection(object):
             raise MokitoConnectionError(e)
 
     def close(self):
-        self.__stream.close()
+        if not self.__pool.leave_connection(self):
+            self.__stream.close()
 
     @coroutine
     def send_message(self, request_id, data, safe=True):

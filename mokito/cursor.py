@@ -123,7 +123,7 @@ class Cursor(object):
         res = yield conn.send_message(request_id, data)
         request_id, data = message.kill_cursors([res['cursor_id']])
         yield conn.send_message(request_id, data, False)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         raise Return(res['data'])
 
@@ -156,7 +156,7 @@ class Cursor(object):
                                           check_keys, safe, kwargs)
         conn = yield self.__pool.get_connection()
         yield conn.send_message(request_id, data, safe)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         if len(docs) == 1:
             _ids = _ids[0]
@@ -211,7 +211,7 @@ class Cursor(object):
                                           document, safe, kwargs)
         conn = yield self.__pool.get_connection()
         res = yield conn.send_message(request_id, data, safe)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         if safe:
             raise Return(res['data'][0].get('upserted', None))
@@ -228,7 +228,7 @@ class Cursor(object):
         request_id, data = message.delete(self.full_collection_name, spec_or_id, safe, kwargs)
         conn = yield self.__pool.get_connection()
         res = yield conn.send_message(request_id, data, safe)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         if safe:
             raise Return(res['data'][0].get('n', 0))
@@ -245,7 +245,7 @@ class Cursor(object):
         request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
         conn = yield self.__pool.get_connection()
         res = yield conn.send_message(request_id, data)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         raise Return(res['data'][0]['n'])
 
@@ -258,6 +258,6 @@ class Cursor(object):
         request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
         conn = yield self.__pool.get_connection()
         res = yield conn.send_message(request_id, data)
-        yield self.__pool.leave_connection(conn)
+        conn.close()
 
         raise Return(res['data'][0]['values'])
