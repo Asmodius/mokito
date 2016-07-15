@@ -117,13 +117,12 @@ class Cursor(object):
         if fields and not isinstance(fields, dict):
             fields = dict((i, 1) for i in fields)
 
-        request_id, data = message.query(query_options(), self.full_collection_name, skip,
-                                         limit, spec, fields)
-        conn = yield self.__pool.get_connection()
-        res = yield conn.send_message(request_id, data)
-        request_id, data = message.kill_cursors([res['cursor_id']])
-        yield conn.send_message(request_id, data, False)
-        conn.close()
+        request_id, data = message.query(query_options(), self.full_collection_name,
+                                         skip, limit, spec, fields)
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data)
+            request_id, data = message.kill_cursors([res['cursor_id']])
+            yield conn.send_message(request_id, data, False)
 
         raise Return(res['data'])
 
@@ -154,9 +153,8 @@ class Cursor(object):
 
         request_id, data = message.insert(self.full_collection_name, docs,
                                           check_keys, safe, kwargs)
-        conn = yield self.__pool.get_connection()
-        yield conn.send_message(request_id, data, safe)
-        conn.close()
+        with self.__pool.get_connection() as conn:
+            yield conn.send_message(request_id, data, safe)
 
         if len(docs) == 1:
             _ids = _ids[0]
@@ -209,9 +207,8 @@ class Cursor(object):
 
         request_id, data = message.update(self.full_collection_name, upsert, multi, spec,
                                           document, safe, kwargs)
-        conn = yield self.__pool.get_connection()
-        res = yield conn.send_message(request_id, data, safe)
-        conn.close()
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data, safe)
 
         if safe:
             raise Return(res['data'][0].get('upserted', None))
@@ -226,9 +223,8 @@ class Cursor(object):
         safe = True if kwargs else bool(safe)
 
         request_id, data = message.delete(self.full_collection_name, spec_or_id, safe, kwargs)
-        conn = yield self.__pool.get_connection()
-        res = yield conn.send_message(request_id, data, safe)
-        conn.close()
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data, safe)
 
         if safe:
             raise Return(res['data'][0].get('n', 0))
@@ -243,9 +239,8 @@ class Cursor(object):
             spec["$hint"] = hint
 
         request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
-        conn = yield self.__pool.get_connection()
-        res = yield conn.send_message(request_id, data)
-        conn.close()
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data)
 
         raise Return(res['data'][0]['n'])
 
@@ -256,8 +251,7 @@ class Cursor(object):
         spec = SON({"distinct": self.__collection_name, "key": key, "query": spec})
 
         request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
-        conn = yield self.__pool.get_connection()
-        res = yield conn.send_message(request_id, data)
-        conn.close()
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data)
 
         raise Return(res['data'][0]['values'])

@@ -20,7 +20,7 @@ from message import unpack_response
 
 class Connection(object):
 
-    def __init__(self, uri, pool):
+    def __init__(self, uri):
         try:
             _uri = urlparse.urlparse(uri)
             self._host = _uri.hostname
@@ -29,15 +29,8 @@ class Connection(object):
             raise MokitoInvalidURIError()
 
         self.__stream = None
-        self.__pool = pool
-        self.e_conn = Future()
 
-    def _run_conn_task(self):
-        self.e_conn.set_result(None)
-
-    @coroutine
-    def _simple_connect(self):
-        yield self.e_conn
+    def simple_connect(self):
         try:
             self.__stream = IOStream(socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0))
             self.__stream.connect((self._host, self._port))
@@ -45,8 +38,7 @@ class Connection(object):
             raise MokitoConnectionError(e)
 
     def close(self):
-        if not self.__pool.leave_connection(self):
-            self.__stream.close()
+        self.__stream.close()
 
     @coroutine
     def send_message(self, request_id, data, safe=True):
@@ -59,15 +51,11 @@ class Connection(object):
     def _send_message(self, request_id, data, safe, future):
         yield future
 
-        try:
-            self.__stream.write(data)
-            if safe:
-                length = yield self._get_header(request_id)
-                res = yield self._get_response(length - 16)
-                raise Return(res)
-        except IOError:
-            self.close()
-            raise
+        self.__stream.write(data)
+        if safe:
+            length = yield self._get_header(request_id)
+            res = yield self._get_response(length - 16)
+            raise Return(res)
 
     @coroutine
     def _get_header(self, request_id):

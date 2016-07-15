@@ -1,10 +1,8 @@
 # coding: utf-8
 
-from tornado.gen import coroutine, Return
-from tornado.ioloop import IOLoop
+import contextlib
 
 from connection import Connection
-
 
 
 class ConnectionPool(object):
@@ -20,29 +18,24 @@ class ConnectionPool(object):
 
         self._uri = uri
         self._cache_size = cache_size
-        self._idle_cache = []  # the actual connections that can be used
+        self._cache = []
         self._db_name = db_name
 
     @property
     def db_name(self):
         return self._db_name
 
-    @coroutine
+    @contextlib.contextmanager
     def get_connection(self):
-        """ get a cached connection from the pool """
-        if self._idle_cache:
-            raise Return(self._idle_cache.pop(0))
-
-        conn = Connection(self._uri, self)
-        # IOLoop.current().spawn_callback(conn._run_conn_task)
-        IOLoop.current().add_callback(conn._run_conn_task)
-        yield conn._simple_connect()
-        raise Return(conn)
-
-    def leave_connection(self, con):
-        if con in self._idle_cache:
-            return True
-
-        if self._cache_size < len(self._idle_cache):
-            self._idle_cache.append(con)
-            return True
+        if self._cache:
+            conn = self._cache.pop(0)
+        else:
+            conn = Connection(self._uri)
+            conn.simple_connect()
+        try:
+            yield conn
+            if len(self._cache) < self._cache_size:
+                self._cache.append(conn)
+        except Exception:
+            conn.close()
+            raise
