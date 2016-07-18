@@ -33,12 +33,14 @@ class Documents(UserList):
         map(lambda i: i.dirty_clear(), self.data)
 
     @coroutine
-    def preload(self, *fields):
-        yield [i.preload(*fields) for i in self.data]
+    def preload(self, *fields, **kwargs):
+        cache = kwargs.get('cache', {})
+        yield [i.preload(*fields, cache=cache) for i in self.data]
 
     @coroutine
     def to_json(self, *role, **kwargs):
-        raise Return([(yield i.to_json(*role, **kwargs)) for i in self.data])
+        cache = kwargs.get('cache', {})
+        raise Return([(yield i.to_json(*role, cache=cache)) for i in self.data])
 
 
 class DocumentMeta(type):
@@ -133,14 +135,12 @@ class Document(object):
             raise MokitoORMError('Connection to the database "%s" not found' % db)
 
     @coroutine
-    def __preload(self, node, cash, *fields):
+    def preload(self, *fields, **kwargs):
+        node = kwargs.get('node', self._data)
+        cache = kwargs.get('cache', {})
+
         fields = set(fields)
         fields.discard('')
-        fields = list(fields)
-
-        if not fields:
-            fields = node.keys()
-        fields.sort()
 
         for i in fields:
             k1, _, k2 = str(i).partition(SEPARATOR)
@@ -149,20 +149,15 @@ class Document(object):
                 if not _node.been_set or _node.dirty:
                     dbref = _node.dbref
                     if dbref.id is not None:
-                        data = cash.get(dbref)
+                        data = cache.get(dbref)
                         if not data:
                             cur = self._cursor(dbref.database, dbref.collection)
                             data = yield cur.find_one(dbref.id, fields=_node.fields.keys())
-                            cash[dbref] = data
+                            cache[dbref] = data
                         _node.set(data)
                         _node.dirty_clear()
             else:
-                yield self.__preload(_node, cash, k2)
-
-    @coroutine
-    def preload(self, *fields):
-        cash = {}
-        yield self.__preload(self._data, cash, *fields)
+                yield self.preload(k2, node=_node, cache=cache)
 
     @classmethod
     @coroutine
@@ -175,12 +170,13 @@ class Document(object):
     @coroutine
     def find_one(cls, spec_or_id, preload=False):
         cur = cls._cursor()
-        data = yield cur.find_one(spec_or_id, fields=cls.fields.keys())
+        fields = cls.fields.keys()
+        data = yield cur.find_one(spec_or_id, fields=fields)
         if data:
             self = cls(data)
             self.dirty_clear()
             if preload:
-                yield self.preload()
+                yield self.preload(*fields)
             raise Return(self)
 
     @classmethod
@@ -194,11 +190,12 @@ class Document(object):
     @coroutine
     def find(cls, spec=None, skip=0, limit=0, sort=None, hint=None, preload=False):
         cur = cls._cursor()
-        data = yield cur.find(spec, cls.fields.keys(), skip, limit, sort=sort, hint=hint)
+        fields = cls.fields.keys()
+        data = yield cur.find(spec, fields, skip, limit, sort=sort, hint=hint)
         res = Documents(cls(i) for i in data)
         res.dirty_clear()
         if preload:
-            yield res.preload()
+            yield res.preload(*fields)
         raise Return(res)
 
     @classmethod
@@ -230,7 +227,7 @@ class Document(object):
         self['_id'] = None
 
     @coroutine
-    def to_json(self, *role):
+    def to_json(self, *role, **kwargs):
         """
         converts the attributes into a dictionary
         :param role: Role name or list of role name. The role needs to be defined in the class
@@ -249,7 +246,8 @@ class Document(object):
             else:
                 _fields.add(i)
 
-        yield self.preload(*_fields)
+        cache = kwargs.get('cache', {})
+        yield self.preload(*[i for i in _fields if '.' in i], cache=cache)
         for i in _fields:
             try:
                 v = self._data[i].value()
