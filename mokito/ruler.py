@@ -323,7 +323,7 @@ class NodeArray(NodeComposite):
             ret = [self.__getitem__(i) for i in fields]
         else:
             ret = self[:]
-        if default and not ret:
+        if default is not None and not ret:
             ret = default
         return ret
 
@@ -579,7 +579,7 @@ class NodeDict(NodeComposite):
 
     def value(self, fields=None, default=None):
         ret = {i: self._cast(self.__getitem__(i)) for i in fields or self._val.keys()}
-        if default and not ret:
+        if default is not None and not ret:
             ret = default
         return ret
 

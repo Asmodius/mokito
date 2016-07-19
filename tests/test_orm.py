@@ -217,7 +217,6 @@ class ORMTestCase(AsyncTestCase):
     @gen_test
     def test_cls2(self):
         x = yield TestClass2.find_one(self._id2_a)
-        # yield x.preload('f_11', 'f_12', 'f_13')
         yield x.preload('f_13')
 
         self.assertEqual(x.pk, self._id2_a)
@@ -233,14 +232,13 @@ class ORMTestCase(AsyncTestCase):
     @gen_test
     def test_cls3(self):
         x = yield TestClass2.find_one(self._id2_a)
-        yield x.preload()
+        yield x.preload('f_11', 'f_12', 'f_13')
 
         self.assertEqual(x.pk, self._id2_a)
         self._check_data(x, self.data2_a)
 
         self.assertEqual(x['f_11'].dbref, self.data2_a['f_11'])
         self.assertDictEqual(x['f_11'].value()._data.value(), self.data1_a)
-
         self.assertEqual(x['f_12'][0].dbref, self.data2_a['f_12'][0])
         self.assertEqual(x['f_12'][1].dbref, self.data2_a['f_12'][1])
         self.assertDictEqual(x['f_12'][0].value()._data.value(), self.data1_b)
@@ -287,7 +285,7 @@ class ORMTestCase(AsyncTestCase):
 
     @gen_test
     def test_cls_json1(self):
-        x = yield TestClass2.find_one(self._id2_a)
+        x = yield TestClass2.find_one(self._id2_a, preload=True)
         data1 = yield x.to_json('role_3')
         data2 = {
             'f_11': {

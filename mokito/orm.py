@@ -10,7 +10,7 @@ from tornado.gen import coroutine, Return
 from tornado.concurrent import is_future
 
 from errors import MokitoORMError
-from ruler import Node, NodeDocument
+from ruler import Node, NodeDocument, NodeComposite
 from tools import KnownClasses, SEPARATOR
 from database import Database
 
@@ -141,11 +141,13 @@ class Document(object):
 
         fields = set(fields)
         fields.discard('')
-
         for i in fields:
             k1, _, k2 = str(i).partition(SEPARATOR)
             _node = node[k1]
-            if isinstance(_node, NodeDocument):
+            if isinstance(_node, NodeComposite):
+                yield self.preload(*_node.keys(), node=_node, cache=cache)
+
+            elif isinstance(_node, NodeDocument):
                 if not _node.been_set or _node.dirty:
                     dbref = _node.dbref
                     if dbref.id is not None:
@@ -222,7 +224,7 @@ class Document(object):
 
     @coroutine
     def remove(self, safe=False):
-        cur = cls._cursor()
+        cur = self._cursor()
         yield cur.remove(self['_id'].value(), safe)
         self['_id'] = None
 
