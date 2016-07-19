@@ -106,7 +106,7 @@ class Document(object):
         return self._data['_id'].value()
 
     @property
-    def _id(self):
+    def id(self):
         return str(self._data['_id'].value())
 
     @property
@@ -253,11 +253,14 @@ class Document(object):
         for i in _fields:
             try:
                 v = self._data[i].value()
+                if i == '_id':
+                    v = str(v)
             except ValueError:
                 v = None
             else:
                 if isinstance(v, Document):
                     v = yield v.to_json()
+
             data[i] = v
 
         raise Return(data)

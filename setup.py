@@ -49,7 +49,7 @@ setup(
     url='https://github.com/Asmodius/mokito',
     download_url='https://github.com/Asmodius/mokito/archive/master.zip',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved',
         'Operating System :: POSIX :: Linux',
