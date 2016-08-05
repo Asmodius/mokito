@@ -15,6 +15,7 @@ from tools import KnownClasses, SEPARATOR
 from database import Database
 
 DEFAULT_URI = "mongodb://127.0.0.1:27017"
+DEFAULT_CONNECTIONS = 10
 
 
 # TODO: добавить self.set(data)
@@ -46,7 +47,7 @@ class Documents(UserList):
 class DocumentMeta(type):
 
     def __new__(cls, name, bases, attr):
-        for i in ['__uri__', '__database__', 'fields', 'roles']:
+        for i in ['__uri__', '__database__', '__connect_count__', 'fields', 'roles']:
             if i not in attr:
                 for j in bases:
                     if hasattr(j, i):
@@ -61,7 +62,9 @@ class DocumentMeta(type):
         attr['_ruler'] = Node.make(attr['fields'])
         _cls = type.__new__(cls, name, bases, attr)
         if attr['__database__']:
-            Database.add(attr['__database__'], attr['__uri__'] or DEFAULT_URI)
+            Database.add(attr['__database__'],
+                         attr['__uri__'],
+                         attr['__connect_count__'])
             KnownClasses.add(_cls)
         return _cls
 
@@ -71,6 +74,7 @@ class Document(object):
     __uri__ = DEFAULT_URI
     __database__ = None
     __collection__ = None
+    __connect_count__ = DEFAULT_CONNECTIONS
     fields = {}
     roles = {}
 
@@ -183,7 +187,7 @@ class Document(object):
 
     @classmethod
     @coroutine
-    def find_raw(cls, spec=None, *fields):
+    def find_raw(cls, spec, *fields):
         cur = cls._cursor()
         data = yield cur.find(spec, fields=fields)
         raise Return(data)
@@ -215,11 +219,12 @@ class Document(object):
         raise Return(data)
 
     @coroutine
-    def save(self):
+    def save(self, safe=True):
         self._data.setdefault('_id', ObjectId())
         if self._data.dirty:
             cur = self._cursor()
-            yield cur.update({"_id": self._data['_id'].value()}, self._data.query, upsert=True)
+            yield cur.update({"_id": self._data['_id'].value()},
+                             self._data.query, upsert=True, safe=safe)
             self.dirty_clear()
 
     @coroutine
@@ -268,6 +273,7 @@ class Document(object):
     @classmethod
     @coroutine
     def from_json(cls, *args, **kwargs):
+        # TODO: add role
         self = None
         data = {}
         for i in args:

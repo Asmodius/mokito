@@ -14,10 +14,10 @@ class Database(object):
         return cls.all_clients.get(db_name)
 
     @classmethod
-    def set(cls, db_name, uri, *args, **kwargs):
-        cls.all_clients[db_name] = Client(db_name, uri, *args, **kwargs)
+    def set(cls, db_name, uri, connect_count):
+        cls.all_clients[db_name] = Client(db_name, uri, connect_count)
 
     @classmethod
-    def add(cls, db_name, uri, *args, **kwargs):
+    def add(cls, db_name, uri, connect_count):
         if db_name not in cls.all_clients:
-            cls.set(db_name, uri, *args, **kwargs)
+            cls.set(db_name, uri, connect_count)
