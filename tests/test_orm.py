@@ -366,3 +366,7 @@ class ORMTestCase(AsyncTestCase):
 
         x2 = yield TestClass2.find_one(self._id2_a, preload=True)
         self.assertIsNone(x2['f_11'].value())
+
+# TODO: add test  "res = yield foo.save()"
+# TODO: add test  "Documents.remove()"
+# TODO: add test  "Documents.filter(...)"

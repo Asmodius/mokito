@@ -135,7 +135,9 @@ class NodeDocument(Node):
             self._been_set = True
 
     def __getitem__(self, key):
-        if self._been_set:
+        if key == '_id' and self._val is not None:
+            return self._val.dbref.id
+        elif self._been_set:
             return self._val.__getitem__(key)
         raise ValueError('The document is not loaded')
 

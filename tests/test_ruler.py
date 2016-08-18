@@ -14,8 +14,6 @@ from tests.util import (
     TestClass2
 )
 
-# TODO: add test  Node['foo.bar.baz'] = 1
-
 
 class TestSequenceFunctions(unittest.TestCase):
 
@@ -659,7 +657,7 @@ class TestSequenceFunctions(unittest.TestCase):
             '$unset': {'x2.y2': '', 'x3': ''}
         })
 
-    def test_Node_Document(self):
+    def test_Node_Document1(self):
         node = Node.make(TestClass2)
         self.assertIsNotNone(node)
         self.assertIsNone(node.value())
@@ -681,3 +679,20 @@ class TestSequenceFunctions(unittest.TestCase):
         node['f_0'] = x
         self.assertTrue(node.dirty)
         self.assertEqual(node['f_0'].value(), x)
+
+    def test_Node_Document2(self):
+        node = Node.make(TestClass2)
+        data1 = ['a1', 'a2', 'a3', 'a4']
+        data2 = ['b1', 'b2', 'b3']
+        node.set({'f_8': data1})
+        self.assertTrue(node.dirty)
+        self.assertEqual(node['f_8'].value(), data1)
+        node.dirty_clear()
+        self.assertFalse(node.dirty)
+        self.assertEqual(node['f_8'].value(), data1)
+
+        node['f_8'] = data2
+        self.assertEqual(node['f_8'].value(), data2+['a4'])
+
+# TODO: не работает присвоение списка
+# TODO: add test  Node['foo.bar.baz'] = 1
