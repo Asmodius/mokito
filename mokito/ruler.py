@@ -112,6 +112,7 @@ class NodeDocument(Node):
         self._been_set = False
 
     def set(self, value):
+        value = self._cast(value)
         if isinstance(value, DBRef):
             if value.collection != self._rules.__collection__:
                 raise ValueError('Wrong collection name: %s and %s' %
@@ -126,9 +127,7 @@ class NodeDocument(Node):
                 return True
             else:
                 return False
-
         else:
-            value = self._cast(value)
             if not isinstance(value, dict):
                 raise ValueError
             self._val = self._rules(value)
