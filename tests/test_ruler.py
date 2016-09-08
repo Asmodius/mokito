@@ -11,7 +11,7 @@ from tests.util import (
     random_str,
     random_float,
     random_datetime,
-    TestClass2
+    TestClass2,
 )
 
 
@@ -693,6 +693,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
         node['f_8'] = data2
         self.assertEqual(node['f_8'].value(), data2+['a4'])
+
 
 # TODO: не работает присвоение списка
 # TODO: add test  Node['foo.bar.baz'] = 1

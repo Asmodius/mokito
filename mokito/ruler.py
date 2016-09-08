@@ -107,7 +107,8 @@ class Node(object):
 
 class NodeDocument(Node):
     def __init__(self, rules):
-        self._rules = KnownClasses.get(rules)
+        self._rules_base = KnownClasses.get(rules)
+        self._rules = self._rules_base
         self._val = None
         self._been_set = False
 
@@ -115,23 +116,32 @@ class NodeDocument(Node):
         value = self._cast(value)
         if isinstance(value, DBRef):
             if value.collection != self._rules.__collection__:
-                raise ValueError('Wrong collection name: %s and %s' %
-                                 (value.collection, self._rules.__collection__))
+                for i in self._rules_base.__subclasses__():
+                    if value.collection == i.__collection__:
+                        self._rules = i
+                        break
+                else:
+                    raise ValueError('Wrong collection: %s and %s' %
+                                     (value.collection, self._rules.__collection__))
             if not (self._val and self._val.pk == value.id):
                 self._val = self._rules(_id=value.id)
+                return True
 
-        elif hasattr(value, 'dbref') and hasattr(value, '_data') and \
-                isinstance(value._data, NodeDict):
+        elif isinstance(value, self._rules_base):
             if value.dbref != self.dbref or value.dirty or self.dirty:
                 self._val = value
+                self._been_set = True
                 return True
             else:
                 return False
-        else:
-            if not isinstance(value, dict):
-                raise ValueError
+
+        elif isinstance(value, dict):
             self._val = self._rules(value)
             self._been_set = True
+            return True
+
+        else:
+            raise ValueError()
 
     def __getitem__(self, key):
         if key == '_id' and self._val is not None:
@@ -610,3 +620,5 @@ class NodeDict(NodeComposite):
         if not ret["$unset"]:
             del ret["$unset"]
         return ret
+
+# TODO: add default rule fields = {'f_0': 'Foo', 'f_1': datetime.datetime.now}

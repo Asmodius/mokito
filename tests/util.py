@@ -16,6 +16,10 @@ TEST_DB_NAME = 'test_mokito'
 TEST_DB_URI = "mongodb://127.0.0.1:27017"
 TEST_COLLECTION1 = 'tst1'
 TEST_COLLECTION2 = 'tst2'
+TEST_COLLECTION3A = 'tst3a'
+TEST_COLLECTION3B = 'tst3b'
+TEST_COLLECTION4 = 'tst4'
+TEST_COLLECTION5 = 'tst5'
 
 
 def random_int():
@@ -167,3 +171,43 @@ data2_b = {
     'f_10': [random_int(), random_str()],
     'foo': 'baz'
 }
+
+
+class TestClass3A(mokito.orm.Document):
+    __uri__ = TEST_DB_URI
+    __database__ = TEST_DB_NAME
+    __collection__ = TEST_COLLECTION3A
+    fields = {
+        'f_1': str,
+    }
+
+
+class TestClass3B(TestClass3A):
+    __collection__ = TEST_COLLECTION3B
+    fields = {
+        'f_2': int,
+    }
+
+
+class TestClass3C(TestClass3A):
+    fields = {
+        'f_3': float,
+    }
+
+
+class TestClass3D(mokito.orm.Document):
+    __uri__ = TEST_DB_URI
+    __database__ = TEST_DB_NAME
+    __collection__ = TEST_COLLECTION5
+    fields = {
+        'f_3': float,
+    }
+
+
+class TestClass4(mokito.orm.Document):
+    __uri__ = TEST_DB_URI
+    __database__ = TEST_DB_NAME
+    __collection__ = TEST_COLLECTION4
+    fields = {
+        'x_1': TestClass3A
+    }

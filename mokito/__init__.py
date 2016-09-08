@@ -5,4 +5,4 @@ from .orm import Document
 
 __all__ = ["Client", "Document"]
 
-version = "0.1.13"
+version = "0.1.14"

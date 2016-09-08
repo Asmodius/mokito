@@ -60,8 +60,8 @@ class Cursor(object):
              sort=None, max_scan=None, _is_command=False, hint=None):
         """Query the database.
         :param spec: (optional): _id or dict
-        :param fields: (optional): a list of field names that should be returned in the result set
-            ("_id" will always be included), or a dict specifying the fields to return
+        :param fields: (optional): a list of field names that should be returned in the result set,
+            or a dict specifying the fields to return
         :param skip: (optional): the number of documents to omit (from the start of the result set)
             when returning the results
         :param limit: (optional): the maximum number of results to return
@@ -114,8 +114,9 @@ class Cursor(object):
             limit = 0
         if skip is None:
             skip = 0
-        if fields and not isinstance(fields, dict):
-            fields = dict((i, 1) for i in fields)
+        if fields:
+            if not isinstance(fields, dict):
+                fields = dict((i, 1) for i in fields)
 
         request_id, data = message.query(query_options(), self.full_collection_name,
                                          skip, limit, spec, fields)
@@ -125,6 +126,55 @@ class Cursor(object):
             yield conn.send_message(request_id, data, False)
 
         raise Return(res['data'])
+
+    @coroutine
+    def find_and_modify(self, spec, update, fields=None, sort=None, upsert=False, new=False):
+        """
+        https://docs.mongodb.com/manual/reference/command/findAndModify/
+        :param spec: a dict or bson.son.SON instance specifying elements which must be present for
+            a document to be updated
+        :param update: a dict or bson.son.SON instance specifying the document to be used for the
+            update or (in the case of an upsert) insert
+        :param fields: (optional) a list of field names that should be returned in the result set,
+            or a dict specifying the fields to return
+        :param sort:
+        :param upsert: (optional) perform an upsert if True
+        :param new: (optional) When true, returns the modified document rather than the original.
+            The default is false.
+        """
+        if spec is None:
+            spec = {}
+        elif isinstance(spec, ObjectId):
+            spec = {"_id": spec}
+
+        command = SON([
+            ("findAndModify", self.collection_name),
+            ("query", spec),
+            ("new", new),
+            ("update", update),
+        ])
+
+        if sort:
+            sort = message.index_document(fields2sort(sort))
+            if sort:
+                command["sort"] = sort
+        if upsert:
+            command["upsert"] = upsert
+
+        if fields:
+            if not isinstance(fields, dict):
+                fields = dict((i, 1) for i in fields)
+            command['fields'] = fields
+
+        request_id, data = message.query(0, self._full_collection_name("$cmd"), 0, 1, command)
+        with self.__pool.get_connection() as conn:
+            res = yield conn.send_message(request_id, data)
+            request_id, data = message.kill_cursors([res['cursor_id']])
+            yield conn.send_message(request_id, data, False)
+
+        data = res['data'][0]
+        if int(data['ok']):
+            raise Return(data['value'])
 
     @coroutine
     def insert(self, doc_or_docs, safe=True, check_keys=True, **kwargs):
@@ -161,13 +211,13 @@ class Cursor(object):
         raise Return(_ids)
 
     @coroutine
-    def update(self, spec, document, upsert=False, safe=True, multi=False,
+    def update(self, spec, update, upsert=False, safe=True, multi=False,
                no_replace=False, **kwargs):
         """Update a document(s) in this collection.
 
         :param spec: a dict or bson.son.SON instance specifying elements which must be present for
             a document to be updated
-        :param document: a dict or bson.son.SON instance specifying the document to be used for the
+        :param update: a dict or bson.son.SON instance specifying the document to be used for the
             update or (in the case of an upsert) insert
         :param upsert: perform an upsert if True
         :param safe: (optional): check that the update succeeded
@@ -197,16 +247,16 @@ class Cursor(object):
         """
         if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
-        if not isinstance(document, dict):
+        if not isinstance(update, dict):
             raise TypeError("document must be an instance of dict")
 
         upsert = bool(upsert)
         safe = True if kwargs else bool(safe)
-        if no_replace and not document.get("$set"):
-            document = {"$set": document}
+        if no_replace and not update.get("$set"):
+            update = {"$set": update}
 
         request_id, data = message.update(self.full_collection_name, upsert, multi, spec,
-                                          document, safe, kwargs)
+                                          update, safe, kwargs)
         with self.__pool.get_connection() as conn:
             res = yield conn.send_message(request_id, data, safe)
 
