@@ -114,7 +114,13 @@ class NodeDocument(Node):
 
     def set(self, value):
         value = self._cast(value)
-        if isinstance(value, DBRef):
+        if value is None:
+            ret = self._val is not None
+            self._been_set = False
+            self._val = None
+            return ret
+
+        elif isinstance(value, DBRef):
             if value.collection != self._rules.__collection__:
                 for i in self._rules_base.__subclasses__():
                     if value.collection == i.__collection__:
@@ -603,7 +609,8 @@ class NodeDict(NodeComposite):
         for i in self._changed:
             v = self._val[i]
             if isinstance(v, NodeDocument):
-                ret["$set"][i] = v.dbref
+                ref = v.dbref
+                ret["$set"][i] = ref if ref.id else None
 
             else:
                 _q = v.query

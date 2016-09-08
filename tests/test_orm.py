@@ -417,6 +417,15 @@ class ORMTestCase(AsyncTestCase):
         self.assertDictEqual(x4._data.query, {'$set': {'x_1': xc.dbref}})
         self.assertEqual(x4['x_1.f_1'], xc['f_1'])
 
+    @gen_test
+    def test_ruler_None(self):
+        x = yield TestClass2.find_one(self._id2_a)
+        self.assertIsNotNone(x['f_11'].value())
+        x['f_11'] = None
+        self.assertDictEqual(x._data.query, {'$set': {'f_11': None}})
+
+
+
 # TODO: add test  "res = yield foo.save()"
 # TODO: add test  "Documents.remove()"
 # TODO: add test  "Documents.filter(...)"
