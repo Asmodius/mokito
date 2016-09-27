@@ -191,13 +191,13 @@ class CursorTestCase(BaseTestCase):
         yield self.db.foo.insert([data1, data2])
 
         res = yield self.db.foo.update({'_id': _id1}, {'foo': 'baz'}, no_replace=True)
-        self.assertIsNone(res)
+        self.assertTrue(res)
         res = yield self.db.foo.find()
         self.assertDictEqual({'_id': _id1, 'bar': 1, 'foo': 'baz'}, res[0])
         self.assertDictEqual(data2, res[1])
 
         res = yield self.db.foo.update({'_id': _id2}, {'foo': 'baz'})
-        self.assertIsNone(res)
+        self.assertTrue(res)
         res = yield self.db.foo.find()
         self.assertDictEqual({'_id': _id1, 'bar': 1, 'foo': 'baz'}, res[0])
         self.assertDictEqual({'_id': _id2, 'foo': 'baz'}, res[1])
@@ -211,13 +211,13 @@ class CursorTestCase(BaseTestCase):
         yield self.db.foo.insert([data1, data2])
 
         res = yield self.db.foo.update({'foo': 'foo'}, {"$set": {'bar': 3}})
-        self.assertIsNone(res)
+        self.assertTrue(res)
         res = yield self.db.foo.find()
         self.assertDictEqual({'_id': _id1, 'bar': 3, 'foo': 'foo'}, res[0])
         self.assertDictEqual(data2, res[1])
 
         res = yield self.db.foo.update({'foo': 'foo'}, {"$set": {'bar': 4}}, multi=True)
-        self.assertIsNone(res)
+        self.assertTrue(res)
         res = yield self.db.foo.find()
         self.assertDictEqual({'_id': _id1, 'bar': 4, 'foo': 'foo'}, res[0])
         self.assertDictEqual({'_id': _id2, 'bar': 4, 'foo': 'foo'}, res[1])
@@ -231,7 +231,7 @@ class CursorTestCase(BaseTestCase):
         yield self.db.foo.insert(data1)
 
         res = yield self.db.foo.update({'_id': _id2}, data2)
-        self.assertIsNone(res)
+        self.assertFalse(res)
         res = yield self.db.foo.find_one(_id2)
         self.assertIsNone(res)
 
