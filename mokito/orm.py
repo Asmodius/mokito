@@ -163,6 +163,9 @@ class Document(object):
     def value(self, default=None):
         return self._data.value(default)
 
+    def setdefault(self, key, value):
+        self._data.setdefault(key, value)
+
     @classmethod
     def get_cursor(cls, database=None, collection=None):
         db = database or cls.__database__
@@ -265,10 +268,11 @@ class Document(object):
         self._data.setdefault('_id', ObjectId())
         if self._data.dirty:
             cur = self.get_cursor()
-            yield cur.update({"_id": self._data['_id'].value()},
-                             self._data.query, upsert=True, safe=safe)
-            self.dirty_clear()
-            raise Return(True)
+            res = yield cur.update({"_id": self._data['_id'].value()},
+                                   self._data.query, upsert=True, safe=safe)
+            if res:
+                self.dirty_clear()
+            raise Return(res)
 
     @coroutine
     def remove(self, safe=True):

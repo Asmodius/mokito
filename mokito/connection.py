@@ -41,19 +41,19 @@ class Connection(object):
         self.__stream.close()
 
     @coroutine
-    def send_message(self, request_id, data, safe=True):
+    def send_message(self, request, safe=True):
         xx = Future()
         IOLoop.current().add_callback(partial(lambda x: x.set_result(None), xx))
-        res = yield self._send_message(request_id, data, safe, xx)
+        res = yield self._send_message(request, safe, xx)
         raise Return(res)
 
     @coroutine
-    def _send_message(self, request_id, data, safe, future):
+    def _send_message(self, request, safe, future):
         yield future
 
-        self.__stream.write(data)
+        self.__stream.write(request[1])
         if safe:
-            length = yield self._get_header(request_id)
+            length = yield self._get_header(request[0])
             res = yield self._get_response(length - 16)
             raise Return(res)
 

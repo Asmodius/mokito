@@ -36,6 +36,42 @@ class Node(object):
     def __ge__(self, other):
         return self.value() >= self._cast(other)
 
+    def __iadd__(self, other):
+        return self._val + self._cast(other)
+
+    def __isub__(self, other):
+        return self._val - self._cast(other)
+
+    def __imul__(self, other):
+        return self._val * self._cast(other)
+
+    def __ifloordiv__(self, other):
+        return self._val // self._cast(other)
+
+    def __idiv__(self, other):
+        return self._val / self._cast(other)
+
+    def __imod__(self, other):
+        return self._val % self._cast(other)
+
+    def __ipow__(self, other):
+        return self._val ** self._cast(other)
+
+    def __ilshift__(self, other):
+        return self._val << self._cast(other)
+
+    def __irshift__(self, other):
+        return self._val >> self._cast(other)
+
+    def __iand__(self, other):
+        return self._val & self._cast(other)
+
+    def __ior__(self, other):
+        return self._val | self._cast(other)
+
+    def __ixor__(self, other):
+        return self._val ^ self._cast(other)
+
     def __repr__(self):
         return "<%s: %s>" % (self.__class__.__name__, self.value())
 
@@ -212,7 +248,13 @@ class NodeComposite(Node):
     def __contains__(self, item):
         raise NotImplemented
 
+    def __setitem__(self, key, value):
+        raise NotImplemented
+
     def __getitem__(self, key):
+        raise NotImplemented
+
+    def __delitem__(self, key):
         raise NotImplemented
 
     def _del_sub_item(self, k1, k2):
@@ -261,6 +303,11 @@ class NodeComposite(Node):
     def query(self):
         raise NotImplemented
 
+    def setdefault(self, key, value):
+        old = self.__getitem__(key)
+        if old is None or old.value() is None:
+            self.__setitem__(key, value)
+
 
 class NodeArray(NodeComposite):
     def __init__(self, rules):
@@ -283,12 +330,6 @@ class NodeArray(NodeComposite):
         if k2:
             ret = ret[k2] if isinstance(ret, (NodeComposite, NodeDocument)) else None
         return ret
-
-    def __setitem__(self, key, value):
-        raise NotImplemented
-
-    def __delitem__(self, key):
-        raise NotImplemented
 
     def __setslice__(self, start, stop, other):
         raise NotImplemented
@@ -588,11 +629,6 @@ class NodeDict(NodeComposite):
                 self[k] = v.value()
         else:
             raise TypeError
-
-    def setdefault(self, key, default=None):
-        if self._val.get(key).value() is None:
-            self.__setitem__(key, default)
-        return self.__getitem__(key)
 
     def value(self, fields=None, default=None):
         ret = {i: self._cast(self.__getitem__(i)) for i in fields or self._val.keys()}

@@ -11,7 +11,7 @@ from cursor import Cursor
 
 class Client(object):
 
-    def __init__(self, db_name, uri, cache_size=10):
+    def __init__(self, db_name, uri='mongodb://127.0.0.1:27017', cache_size=10):
         """
         Client connection to represent a remote database.
 
@@ -24,7 +24,8 @@ class Client(object):
         :return a Client instance that wraps a pool.ConnectionPool
 
         Usage:
-            >>> db = mokito.Client('db_name', 'mongodb://127.0.0.1:27017')
+            >>> import mokito
+            >>> db = mokito.Client('db_name')
             >>> yield db.collection_name.find({...})
         """
         self._pool = ConnectionPool(uri, db_name, cache_size)
@@ -50,7 +51,8 @@ class Client(object):
                      collection_name.startswith("$cmd")):
             raise MokitoParamError("collection names must not contain '$': %r" % collection_name)
         if collection_name.startswith(".") or collection_name.endswith("."):
-            raise MokitoParamError('collection names must not start or end with ".": %r' % collection_name)
+            raise MokitoParamError('collection names must not start or end with ".": %r' %
+                                   collection_name)
         if "\x00" in collection_name:
             raise MokitoParamError("collection names must not contain the null character")
         return Cursor(collection_name, self._pool)
@@ -85,10 +87,12 @@ class Client(object):
           document before it is sent
 
         For example, a command like ``{buildinfo: 1}`` can be sent using:
+        >>> import mokito
+        >>> db = mokito.Client('db_name')
         >>> db.command("buildinfo")
 
         For a command where the value matters, like ``{collstats: collection_name}`` we can do:
-        >>> db.command("collstats", collection_name)
+        >>> db.command("collstats", 'collection_name')
 
         For commands that take additional arguments we can use kwargs. So
         ``{filemd5: object_id, root: file_root}`` becomes:

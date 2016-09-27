@@ -424,6 +424,12 @@ class ORMTestCase(AsyncTestCase):
         x['f_11'] = None
         self.assertDictEqual(x._data.query, {'$set': {'f_11': None}})
 
+    @gen_test
+    def test_ruler_inc(self):
+        x = yield TestClass2.find_one(self._id2_a)
+        v1 = x['f_2'].value()
+        x['f_2'] += 10
+        self.assertEqual(x['f_2'].value(), v1 + 10)
 
 
 # TODO: add test  "res = yield foo.save()"

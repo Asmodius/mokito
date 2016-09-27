@@ -89,7 +89,7 @@ class Cursor(object):
         def query_options():
             options = 0
             if tailable:
-                options |= message._QUERY_OPTIONS["tailable_cursor"]
+                options |= message.QUERY_OPTIONS["tailable_cursor"]
             return options
 
         if spec is None:
@@ -118,14 +118,20 @@ class Cursor(object):
             if not isinstance(fields, dict):
                 fields = dict((i, 1) for i in fields)
 
-        request_id, data = message.query(query_options(), self.full_collection_name,
-                                         skip, limit, spec, fields)
+        col_name = self.full_collection_name
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data)
-            request_id, data = message.kill_cursors([res['cursor_id']])
-            yield conn.send_message(request_id, data, False)
+            request = message.query(query_options(), col_name, skip, limit, spec, fields)
+            res = yield conn.send_message(request)
+            cursor_id = res['cursor_id']
+            data = res['data']
+            while res['number_returned'] > 100:
+                request = message.get_more(col_name, 101, cursor_id)
+                res = yield conn.send_message(request)
+                data += res['data']
+            request = message.kill_cursors(cursor_id)
+            yield conn.send_message(request, False)
 
-        raise Return(res['data'])
+        raise Return(data)
 
     @coroutine
     def find_and_modify(self, spec, update, fields=None, sort=None, upsert=False, new=False):
@@ -166,11 +172,12 @@ class Cursor(object):
                 fields = dict((i, 1) for i in fields)
             command['fields'] = fields
 
-        request_id, data = message.query(0, self._full_collection_name("$cmd"), 0, 1, command)
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data)
-            request_id, data = message.kill_cursors([res['cursor_id']])
-            yield conn.send_message(request_id, data, False)
+            request = message.query(0, self._full_collection_name("$cmd"), 0, 1, command)
+            res = yield conn.send_message(request)
+            cursor_id = res['cursor_id']
+            request = message.kill_cursors(cursor_id)
+            yield conn.send_message(request, False)
 
         data = res['data'][0]
         if int(data['ok']):
@@ -201,10 +208,9 @@ class Cursor(object):
 
         safe = True if kwargs else bool(safe)
 
-        request_id, data = message.insert(self.full_collection_name, docs,
-                                          check_keys, safe, kwargs)
         with self.__pool.get_connection() as conn:
-            yield conn.send_message(request_id, data, safe)
+            request = message.insert(self.full_collection_name, docs, check_keys, safe, kwargs)
+            yield conn.send_message(request, safe)
 
         if len(docs) == 1:
             _ids = _ids[0]
@@ -236,7 +242,9 @@ class Cursor(object):
 
         There are many useful `update modifiers`_ which can be used when performing updates. For
         example, here we use the "$set" modifier to modify some fields in a matching document:
-
+        Usage:
+          >>> import mokito
+          >>> db = mokito.Client('db_name')
           >>> db.test.insert({"x": "y", "a": "b"})
           ObjectId('...')
           >>> list(db.test.find())
@@ -255,13 +263,14 @@ class Cursor(object):
         if no_replace and not update.get("$set"):
             update = {"$set": update}
 
-        request_id, data = message.update(self.full_collection_name, upsert, multi, spec,
-                                          update, safe, kwargs)
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data, safe)
+            request = message.update(self.full_collection_name, upsert,
+                                     multi, spec, update, safe, kwargs)
+            res = yield conn.send_message(request, safe)
 
         if safe:
-            raise Return(res['data'][0].get('upserted', None))
+            data = res['data'][0]
+            raise Return(data.get('updatedExisting', False) or data.get('upserted', False))
 
     @coroutine
     def remove(self, spec_or_id=None, safe=True, **kwargs):
@@ -272,9 +281,9 @@ class Cursor(object):
 
         safe = True if kwargs else bool(safe)
 
-        request_id, data = message.delete(self.full_collection_name, spec_or_id, safe, kwargs)
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data, safe)
+            request = message.delete(self.full_collection_name, spec_or_id, safe, kwargs)
+            res = yield conn.send_message(request, safe)
 
         if safe:
             raise Return(res['data'][0].get('n', 0))
@@ -288,9 +297,9 @@ class Cursor(object):
         if hint:
             spec["$hint"] = hint
 
-        request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data)
+            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
+            res = yield conn.send_message(request)
 
         raise Return(res['data'][0]['n'])
 
@@ -300,8 +309,8 @@ class Cursor(object):
             spec = {}
         spec = SON({"distinct": self.__collection_name, "key": key, "query": spec})
 
-        request_id, data = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
         with self.__pool.get_connection() as conn:
-            res = yield conn.send_message(request_id, data)
+            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
+            res = yield conn.send_message(request)
 
         raise Return(res['data'][0]['values'])

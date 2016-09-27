@@ -43,7 +43,7 @@ def __last_error(args):
     cmd.update(args)
     return query(0, "admin.$cmd", 0, -1, cmd)
 
-_QUERY_OPTIONS = {
+QUERY_OPTIONS = {
     "tailable_cursor": 2,
     "slave_okay": 4,
     "oplog_replay": 8,
@@ -55,7 +55,7 @@ _QUERY_OPTIONS = {
 OP_UPDATE = 2001  # Update document.
 OP_INSERT = 2002  # Insert new document.
 OP_QUERY = 2004  # Query a collection.
-# OP_GET_MORE = 2005  # Get more data from a query. See Cursors.
+OP_GET_MORE = 2005  # Get more data from a query. See Cursors.
 OP_DELETE = 2006  # Delete documents.
 OP_KILL_CURSORS = 2007  # Notify database that the client has finished with the cursor.
 
@@ -73,25 +73,26 @@ def __pack_message(operation, data):
     return request_id, message + data
 
 
-def query(options, collection_name, num_to_skip, num_to_return, query, field_selector=None):
+def query(options, collection_name, num_to_skip, num_to_return, request, field_selector=None):
     """Get a **query** message. """
     data = struct.pack("<I", options)
     data += _make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    data += BSON.encode(query)
+    data += BSON.encode(request)
     if field_selector is not None:
         data += BSON.encode(field_selector)
     return __pack_message(OP_QUERY, data)
 
 
-# def get_more(collection_name, num_to_return, cursor_id):
-#     """Get a **getMore** message."""
-#     data = _ZERO_32
-#     data += _make_c_string(collection_name)
-#     data += struct.pack("<i", num_to_return)
-#     data += struct.pack("<q", cursor_id)
-#     return __pack_message(OP_GET_MORE, data)
+def get_more(collection_name, num_to_return, cursor_id):
+    """Get a **getMore** message."""
+    data = _ZERO_32
+    data += _make_c_string(collection_name)
+    data += struct.pack("<i", num_to_return)
+    data += struct.pack("<q", cursor_id)
+    return __pack_message(OP_GET_MORE, data)
+
 
 def insert(collection_name, docs, check_keys, safe, last_error_args):
     """Get an **insert** message. """
@@ -144,7 +145,7 @@ def delete(collection_name, spec, safe, last_error_args):
         return __pack_message(OP_DELETE, data)
 
 
-def kill_cursors(cursor_ids):
+def kill_cursors(*cursor_ids):
     """Get a **killCursors** message."""
     data = _ZERO_32
     data += struct.pack("<i", len(cursor_ids))
