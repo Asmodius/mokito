@@ -32,7 +32,7 @@ class TestClass3B(TestClass3A):
 @coroutine
 def main():
     print
-    print 'ASYNC1', mokito.tools.KnownClasses.data
+    print 'ASYNC1', mokito.KnownClasses.data
     print 'ASYNC2', TestClass3B.fields
 
 IOLoop.current().run_sync(main)

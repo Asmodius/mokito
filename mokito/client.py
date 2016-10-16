@@ -106,5 +106,4 @@ class Client(object):
         raise Return(res)
 
     def close(self):
-        # TODO: implement
-        pass
+        self._pool.close()

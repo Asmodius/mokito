@@ -21,3 +21,8 @@ class Database(object):
     def add(cls, db_name, uri, connect_count):
         if db_name not in cls.all_clients:
             cls.set(db_name, uri, connect_count)
+
+    @classmethod
+    def close_all(cls):
+        for i in cls.all_clients.values():
+            i.close()

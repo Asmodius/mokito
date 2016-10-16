@@ -39,3 +39,8 @@ class ConnectionPool(object):
         except Exception:
             conn.close()
             raise
+
+    def close(self):
+        for i in self._cache:
+            i.close()
+        self._cache = []

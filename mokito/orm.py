@@ -11,7 +11,8 @@ from tornado.concurrent import is_future
 
 from errors import MokitoORMError
 from ruler import Node, NodeDocument, NodeComposite
-from tools import KnownClasses, SEPARATOR
+from known_cls import KnownClasses
+from tools import SEPARATOR
 from database import Database
 
 DEFAULT_URI = "mongodb://127.0.0.1:27017"
@@ -34,8 +35,8 @@ class Documents(UserList):
         map(lambda i: i.dirty_clear(), self.data)
 
     @coroutine
-    def reread(self):
-        map(lambda i: (yield i.reread()), self.data)
+    def reread(self, *fields):
+        map(lambda i: (yield i.reread(*fields)), self.data)
 
     @coroutine
     def preload(self, *fields, **kwargs):
@@ -47,7 +48,7 @@ class Documents(UserList):
         if self.data:
             ids = [i.pk for i in self.data]
             cur = self.data[0].get_cursor()
-            yield cur.remove({"_id": {"$in": ids}} , safe)
+            yield cur.remove({"_id": {"$in": ids}}, safe)
             for i in self.data:
                 i['_id'] = None
 
@@ -66,7 +67,7 @@ class Documents(UserList):
 
 class DocumentMeta(type):
 
-    def __new__(cls, name, bases, attr):
+    def __new__(mcs, name, bases, attr):
         for i in ['__uri__', '__database__', '__connect_count__',
                   'fields', 'roles', 'aliases']:
             if i not in attr:
@@ -89,7 +90,7 @@ class DocumentMeta(type):
 
         attr['fields'].setdefault('_id', ObjectId)
         attr['_ruler'] = Node.make(attr['fields'])
-        _cls = type.__new__(cls, name, bases, attr)
+        _cls = type.__new__(mcs, name, bases, attr)
         if attr['__database__']:
             Database.add(attr['__database__'],
                          attr['__uri__'],
@@ -202,10 +203,14 @@ class Document(object):
                 yield self.preload(k2, node=_node, cache=cache)
 
     @coroutine
-    def reread(self):
+    def reread(self, *fields):
+        """
+        Read the object again. If the fields are not defined, all fields are read.
+        :param fields: A list of field names
+        """
         cur = self.get_cursor()
-        fields = self.fields.keys()
-        data = yield cur.find_one(self.pk, fields=fields)
+        _fields = fields or self.fields.keys()
+        data = yield cur.find_one(self.pk, fields=_fields)
         if data:
             self._data.set(data)
             self.dirty_clear()
@@ -281,7 +286,8 @@ class Document(object):
         self['_id'] = None
 
     def fields_to_data(self, *roles):
-        fields = set(itertools.chain(*[self.roles[i] for i in roles]) if roles else self.fields.keys())
+        fields = set(itertools.chain(*[self.roles[i] for i in roles])
+                     if roles else self.fields.keys())
         field_data = []
         for i in fields:
             x = self.aliases.get(i, i)

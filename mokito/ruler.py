@@ -2,7 +2,8 @@
 
 from bson import DBRef
 
-from tools import KnownClasses, SEPARATOR
+from known_cls import KnownClasses
+from tools import SEPARATOR
 
 
 class Node(object):
@@ -143,7 +144,7 @@ class Node(object):
 
 class NodeDocument(Node):
     def __init__(self, rules):
-        self._rules_base = KnownClasses.get(rules)
+        self._rules_base = KnownClasses[rules]
         self._rules = self._rules_base
         self._val = None
         self._been_set = False
