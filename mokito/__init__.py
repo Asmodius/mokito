@@ -6,4 +6,4 @@ from .known_cls import KnownClasses
 
 __all__ = ["Client", "Document", "KnownClasses"]
 
-version = "0.1.17"
+version = "0.1.18"

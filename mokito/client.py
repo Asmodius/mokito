@@ -102,7 +102,7 @@ class Client(object):
         if isinstance(command, basestring):
             command = SON([(command, value)])
         command.update(kwargs)
-        res = yield self.get_cursor("$cmd").find_one(command, _is_command=True)
+        res = yield self.get_cursor("$cmd").command(command)
         raise Return(res)
 
     def close(self):

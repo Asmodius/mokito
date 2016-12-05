@@ -275,9 +275,10 @@ class Document(object):
             cur = self.get_cursor()
             res = yield cur.update({"_id": self._data['_id'].value()},
                                    self._data.query, upsert=True, safe=safe)
-            if res:
-                self.dirty_clear()
-            raise Return(res)
+            if safe:
+                if res:
+                    self.dirty_clear()
+                raise Return(res)
 
     @coroutine
     def remove(self, safe=True):

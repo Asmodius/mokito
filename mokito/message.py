@@ -80,7 +80,7 @@ def query(options, collection_name, num_to_skip, num_to_return, request, field_s
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
     data += BSON.encode(request)
-    if field_selector is not None:
+    if field_selector:
         data += BSON.encode(field_selector)
     return __pack_message(OP_QUERY, data)
 

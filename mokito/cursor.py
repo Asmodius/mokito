@@ -5,8 +5,7 @@ from bson import SON, ObjectId
 from tornado.gen import coroutine, Return
 
 import message
-from errors import MokitoParamError
-from tools import fields2sort
+from tools import fields2sort, norm_spec
 
 
 class Cursor(object):
@@ -40,17 +39,7 @@ class Cursor(object):
     @coroutine
     def find_one(self, spec_or_id=None, fields=None, skip=0, sort=None, _is_command=False):
         """Get a single document from the database.
-
-        All arguments to `find` are also valid arguments for `find_one`, although any `limit`
-        argument will be ignored. Returns a single document, or ``None`` if no matching document is
-        found.
         """
-        if not (spec_or_id is None or isinstance(spec_or_id, dict)):
-            try:
-                spec_or_id = {"_id": ObjectId(spec_or_id)}
-            except Exception as e:
-                raise MokitoParamError(e.message)
-
         res = yield self.find(spec_or_id, fields, skip, limit=1,
                               sort=sort, _is_command=_is_command)
         raise Return(res[0] if res else None)
@@ -92,10 +81,7 @@ class Cursor(object):
                 options |= message.QUERY_OPTIONS["tailable_cursor"]
             return options
 
-        if spec is None:
-            spec = {}
-        elif isinstance(spec, ObjectId):
-            spec = {"_id": spec}
+        spec = norm_spec(spec)
         if not _is_command and "$query" not in spec:
             spec = SON({"$query": spec})
 
@@ -137,8 +123,7 @@ class Cursor(object):
     def find_and_modify(self, spec, update, fields=None, sort=None, upsert=False, new=False):
         """
         https://docs.mongodb.com/manual/reference/command/findAndModify/
-        :param spec: a dict or bson.son.SON instance specifying elements which must be present for
-            a document to be updated
+        :param spec: None, _id or dict
         :param update: a dict or bson.son.SON instance specifying the document to be used for the
             update or (in the case of an upsert) insert
         :param fields: (optional) a list of field names that should be returned in the result set,
@@ -148,14 +133,9 @@ class Cursor(object):
         :param new: (optional) When true, returns the modified document rather than the original.
             The default is false.
         """
-        if spec is None:
-            spec = {}
-        elif isinstance(spec, ObjectId):
-            spec = {"_id": spec}
-
         command = SON([
             ("findAndModify", self.collection_name),
-            ("query", spec),
+            ("query", norm_spec(spec)),
             ("new", new),
             ("update", update),
         ])
@@ -221,8 +201,7 @@ class Cursor(object):
                no_replace=False, **kwargs):
         """Update a document(s) in this collection.
 
-        :param spec: a dict or bson.son.SON instance specifying elements which must be present for
-            a document to be updated
+        :param spec: None, _id or dict
         :param update: a dict or bson.son.SON instance specifying the document to be used for the
             update or (in the case of an upsert) insert
         :param upsert: perform an upsert if True
@@ -253,11 +232,10 @@ class Cursor(object):
           >>> list(db.test.find())
           [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
         """
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
         if not isinstance(update, dict):
             raise TypeError("document must be an instance of dict")
 
+        spec = norm_spec(spec)
         upsert = bool(upsert)
         safe = True if kwargs else bool(safe)
         if no_replace and not update.get("$set"):
@@ -273,16 +251,20 @@ class Cursor(object):
             raise Return(data.get('updatedExisting', False) or data.get('upserted', False))
 
     @coroutine
-    def remove(self, spec_or_id=None, safe=True, **kwargs):
-        if spec_or_id is None:
-            spec_or_id = {}
-        if not isinstance(spec_or_id, dict):
-            spec_or_id = {"_id": spec_or_id}
+    def remove(self, spec=None, safe=True, **kwargs):
+        """
+        Remove documents
+        :param spec: (optional): _id or dict
+        :param safe:
+        :param kwargs:
+        :return:
+        """
 
+        spec = norm_spec(spec)
         safe = True if kwargs else bool(safe)
 
         with self.__pool.get_connection() as conn:
-            request = message.delete(self.full_collection_name, spec_or_id, safe, kwargs)
+            request = message.delete(self.full_collection_name, spec, safe, kwargs)
             res = yield conn.send_message(request, safe)
 
         if safe:
@@ -290,27 +272,45 @@ class Cursor(object):
 
     @coroutine
     def count(self, spec=None, hint=None):
-        if spec is None:
-            spec = {}
-        spec = SON({'count': self.__collection_name, "query": spec})
+        """
+        Count documents
+        :param spec: (optional): _id or dict
+        :param hint:
+        """
+        command = SON({
+            'count': self.__collection_name,
+            "query": norm_spec(spec)
+        })
 
         if hint:
             spec["$hint"] = hint
 
         with self.__pool.get_connection() as conn:
-            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
+            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, command)
             res = yield conn.send_message(request)
 
         raise Return(res['data'][0]['n'])
 
     @coroutine
     def distinct(self, key, spec=None):
-        if spec is None:
-            spec = {}
-        spec = SON({"distinct": self.__collection_name, "key": key, "query": spec})
+        command = SON({
+            "distinct": self.__collection_name,
+            "key": key,
+            "query": norm_spec(spec)
+        })
 
         with self.__pool.get_connection() as conn:
-            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, spec)
+            request = message.query(0, self._full_collection_name('$cmd'), 0, -1, command)
             res = yield conn.send_message(request)
 
         raise Return(res['data'][0]['values'])
+
+    @coroutine
+    def exists(self, spec=None):
+        res = yield self.find(spec, ['_id'], limit=1)
+        raise Return(bool(res))
+
+    @coroutine
+    def command(self, spec=None):
+        res = yield self.find(spec, limit=1, _is_command=True)
+        raise Return(res[0] if res else None)
