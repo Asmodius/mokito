@@ -2,8 +2,9 @@
 
 from .client import Client
 from .orm import Document
-from .known_cls import KnownClasses
+from .model import Model
+from .manage import ModelManager, DBManager
 
-__all__ = ["Client", "Document", "KnownClasses"]
+__all__ = ["Client", "Document", "Models", "ModelManager", "DBManager"]
 
-version = "0.1.18"
+version = "0.2.0"

@@ -11,7 +11,7 @@ from cursor import Cursor
 
 class Client(object):
 
-    def __init__(self, db_name, uri='mongodb://127.0.0.1:27017', cache_size=10):
+    def __init__(self, db_name, uri='mongodb://127.0.0.1:27017', cache_size=None):
         """
         Client connection to represent a remote database.
 
@@ -28,7 +28,7 @@ class Client(object):
             >>> db = mokito.Client('db_name')
             >>> yield db.collection_name.find({...})
         """
-        self._pool = ConnectionPool(uri, db_name, cache_size)
+        self._pool = ConnectionPool(uri, db_name, cache_size or 10)
         self._db_name = db_name
 
     def __getattr__(self, name):
