@@ -46,7 +46,7 @@ class Cursor(object):
 
     @coroutine
     def find(self, spec=None, fields=None, skip=0, limit=0, snapshot=False, tailable=False,
-             sort=None, max_scan=None, _is_command=False, hint=None):
+             sort=None, max_scan=None, _is_command=False, hint=None, no_result=False):
         """Query the database.
         :param spec: (optional): _id or dict
         :param fields: (optional): a list of field names that should be returned in the result set,
@@ -74,6 +74,7 @@ class Cursor(object):
         :param _is_command:
         :param hint: override MongoDB’s default index selection
             <https://docs.mongodb.com/manual/reference/method/cursor.hint/>
+        :param no_result: without result
         """
         def query_options():
             options = 0
@@ -109,15 +110,17 @@ class Cursor(object):
             request = message.query(query_options(), col_name, skip, limit, spec, fields)
             res = yield conn.send_message(request)
             cursor_id = res['cursor_id']
-            data = res['data']
-            while res['number_returned'] > 100:
-                request = message.get_more(col_name, 101, cursor_id)
-                res = yield conn.send_message(request)
-                data += res['data']
+            if not no_result:
+                data = res['data']
+                while res['number_returned'] > 100:
+                    request = message.get_more(col_name, 101, cursor_id)
+                    res = yield conn.send_message(request)
+                    data += res['data']
+
             request = message.kill_cursors(cursor_id)
             yield conn.send_message(request, False)
 
-        raise Return(data)
+        raise Return(None if no_result else data)
 
     @coroutine
     def find_and_modify(self, spec, update, fields=None, sort=None, upsert=False, new=False):
@@ -186,15 +189,14 @@ class Cursor(object):
                 i['_id'] = ObjectId()
         _ids = [i['_id'] for i in docs]
 
-        safe = True if kwargs else bool(safe)
+        if kwargs:
+            safe = True
 
         with self.__pool.get_connection() as conn:
             request = message.insert(self.full_collection_name, docs, check_keys, safe, kwargs)
             yield conn.send_message(request, safe)
 
-        if len(docs) == 1:
-            _ids = _ids[0]
-        raise Return(_ids)
+        raise Return(_ids[0] if len(docs) == 1 else _ids)
 
     @coroutine
     def update(self, spec, update, upsert=False, safe=True, multi=False,
@@ -311,6 +313,6 @@ class Cursor(object):
         raise Return(bool(res))
 
     @coroutine
-    def command(self, spec=None):
-        res = yield self.find(spec, limit=1, _is_command=True)
+    def command(self, spec=None, safe=True):
+        res = yield self.find(spec, limit=1, _is_command=True, no_result=not safe)
         raise Return(res[0] if res else None)

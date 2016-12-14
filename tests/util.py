@@ -3,7 +3,6 @@
 import datetime
 
 from bson import ObjectId, DBRef
-# from tornado.gen import coroutine, Return
 
 import mokito
 
@@ -14,7 +13,7 @@ TEST_COLLECTION1 = 'tst1'
 TEST_COLLECTION2 = 'tst2'
 
 col1_id1 = ObjectId()
-col1_dbref1 = DBRef('TEST_COLLECTION1', col1_id1)
+col1_dbref1 = DBRef(TEST_COLLECTION1, col1_id1)
 col1_data1 = {
     '_id': col1_id1,
     'x1': 0.5,
@@ -26,7 +25,7 @@ col1_data1 = {
 }
 
 col1_id2 = ObjectId()
-col1_dbref2 = DBRef('TEST_COLLECTION1', col1_id2)
+col1_dbref2 = DBRef(TEST_COLLECTION1, col1_id2)
 col1_data2 = {
     '_id': col1_id2,
     'x1': 1.5,
@@ -108,17 +107,7 @@ class Model0(mokito.Model):
         'x3': (int, str),
         'x4': {'a': int, 'b': int}
     }
-    # roles = {
-    #     'r1': ['_id', 'x1', 'x2', 'x3'],
-    #     'r2': ['x2', 'x3', 'x4'],
-    #     'r3': ['prop1', 'prop2'],
-    #     'r4': ['a1', 'a2', 'a3'],
-    #     'r5': ['x3.1', 'x4.a', 'x4.b'],
-    # }
-    aliases = {'a1': 'x1', 'a2': 'prop1', 'a3': 'prop2'}
 
-
-# 'r6': [['x2.0', {'_format': '%d/%m/%y'}], ['x2.1', {'tz_name': 'Asia/Novosibirsk'}], 'x3.2']
 
 class Model1(Model0):
     @property
@@ -128,7 +117,9 @@ class Model1(Model0):
 
 class Document1(Document0):
     __collection__ = TEST_COLLECTION1
-    __model__ = Model1
+    fields = Model1
+
+    prop1 = Model1.prop1
 
     @property
     def prop2(self):
@@ -139,8 +130,8 @@ class Model2(mokito.Model):
     fields = {
         'f1': (int, str),
         'f2': {'a': int, 'b': int},
-        'm1': Model0,
-        'm2': [Model0],
+        'm1': Model1,
+        'm2': [Model1],
         'd1': Document1,
         'd2': [Document1]
     }
@@ -148,4 +139,4 @@ class Model2(mokito.Model):
 
 class Document2(Document0):
     __collection__ = TEST_COLLECTION2
-    __model__ = Model2
+    fields = Model2

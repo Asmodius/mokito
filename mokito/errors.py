@@ -48,3 +48,7 @@ class MokitoResponseError(MokitoDriverError):
 
 class MokitoORMError(MokitoError):
     pass
+
+
+class MokitoDBREFError(MokitoORMError):
+    pass
