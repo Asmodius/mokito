@@ -246,12 +246,12 @@ class Document(Model):
         data = yield cur.count(spec)
         raise Return(data)
 
-    # # @classmethod
-    # # @coroutine
-    # # def distinct(cls, key, spec=None):
-    # #     cur = cls.get_cursor()
-    # #     data = yield cur.distinct(key, spec)
-    # #     raise Return(data)
+    @classmethod
+    @coroutine
+    def distinct(cls, key, spec=None):
+        cur = cls.get_cursor()
+        data = yield cur.distinct(key, spec)
+        raise Return(data)
 
     @coroutine
     def save(self, safe=True):

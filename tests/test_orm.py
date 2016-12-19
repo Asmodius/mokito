@@ -293,3 +293,8 @@ class ORMTestCase(AsyncTestCase):
                 'x4': {'a': 3, 'b': 4}
             }
         })
+
+    @gen_test
+    def test_distinct(self):
+        data = yield Document2.distinct('m1.x1')
+        self.assertListEqual(data, [0.1, 0.2])
