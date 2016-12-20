@@ -21,4 +21,5 @@ class ModelManager(object):
     def close_db(cls):
         for i in cls.databases.values():
             i.close()
+        # cls.databases = {}
 

@@ -17,6 +17,7 @@ from tests.util import (
     col1_dbref1,
     col1_data1,
     col1_id2,
+    col1_dbref2,
     col1_data2,
     col2_id1,
     col2_data1,
@@ -108,7 +109,6 @@ class ORMTestCase(AsyncTestCase):
         x['x1'] = 3
         self.assertTrue(x.dirty)
         self.assertDictEqual(x.query, {'$set': {'x1': 3.0}})
-        # x._id = None
         y = yield x.save()
         self.assertTrue(y)
         self.assertFalse(x.dirty)
@@ -125,7 +125,7 @@ class ORMTestCase(AsyncTestCase):
         data = col1_data1.copy()
         del data['_id']
 
-        x = Document1(**data)
+        x = Document1(data, inner=True)
         self.assertIsNone(x._id)
         self.assertTrue(x.dirty)
         self.assertDictEqual(x.value, data)
@@ -143,7 +143,6 @@ class ORMTestCase(AsyncTestCase):
     @gen_test
     def test_load_1(self):
         d = yield Document2.find_one(col2_id1)
-
         self.assertDictEqual(d['d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
         self.assertEqual(d['d1'].dbref, col1_dbref1)
 
@@ -153,7 +152,7 @@ class ORMTestCase(AsyncTestCase):
             'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
                    datetime.datetime(2016, 2, 3, 4, 5, 6),
                    datetime.datetime(2016, 3, 4, 5, 6, 7)],
-            'x3': [123, 'foo'],
+            'x3': [123, 'z1'],
             'x4': {'a': 1, 'b': 2}
         })
 
@@ -169,7 +168,7 @@ class ORMTestCase(AsyncTestCase):
             'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
                    datetime.datetime(2016, 2, 3, 4, 5, 6),
                    datetime.datetime(2016, 3, 4, 5, 6, 7)],
-            'x3': [123, 'foo'],
+            'x3': [123, 'z1'],
             'x4': {'a': 1, 'b': 2}
         })
 
@@ -191,14 +190,14 @@ class ORMTestCase(AsyncTestCase):
             '_id': str(col1_id1),
             'x1': 0.5,
             'x2': ["2016-01-02T03:04:05", "2016-02-03T04:05:06", "2016-03-04T05:06:07"],
-            'x3': [123, "foo"],
+            'x3': [123, 1],
             'x4': {"a": 1, "b": 2}
         })
 
         data = yield d.get(['x2', 'x3', 'x4'], date_format='iso', tz_name='Asia/Novosibirsk')
         self.assertDictEqual(data, {
             'x2': ['2016-01-02T09:04:05+06:00', '2016-02-03T10:05:06+06:00', '2016-03-04T11:06:07+06:00'],
-            'x3': [123, "foo"],
+            'x3': [123, 1],
             'x4': {"a": 1, "b": 2}
         })
 
@@ -226,13 +225,13 @@ class ORMTestCase(AsyncTestCase):
                 'f_id': str(col1_id1),
                 'x1': 0.5,
                 'x2': ['2016-01-02T03:04:05', '2016-02-03T04:05:06', '2016-03-04T05:06:07'],
-                'x3': [123, 'foo'],
+                'x3': [123, 1],
                 'x4': {'a': 1, 'b': 2}
             }, {
                 'f_id': str(col1_id2),
                 'x1': 1.5,
                 'x2': ['2016-04-05T06:07:08', '2016-05-06T07:08:09', '2016-06-07T08:09:10'],
-                'x3': [45601, 'bar'],
+                'x3': [45601, 2],
                 'x4': {'a': 3, 'b': 4}
             }
         ])
@@ -257,41 +256,55 @@ class ORMTestCase(AsyncTestCase):
         ])
 
     @gen_test
+    def test_to_json_3(self):
+        d = yield Document1.find()
+        data = yield d.get(['id', 'x1'], {'id': 'a1', 'x1': 'a2'})
+        self.assertListEqual(data, [{'a1': str(col1_id1), 'a2': 0.5},
+                                    {'a1': str(col1_id2), 'a2': 1.5}])
+
+    @gen_test
     def test_from_json_1(self):
         d = Document2()
         self.assertFalse(d.dirty)
-        d.set(col2_data2)
+        d.set(col2_data2, inner=True)
         self.assertTrue(d.dirty)
+        self.assertEqual(d['d1'].dbref, col1_dbref2)
 
         yield d['d1'].reread()
         yield [i.reread() for i in d['d2']]
+        dt1 = datetime.datetime(2015, 1, 2, 3, 4, 5)
+        dt2 = datetime.datetime(2015, 2, 3, 4, 5, 6)
+        dt3 = datetime.datetime(2015, 3, 4, 5, 6, 7)
+        dt4 = datetime.datetime(2016, 4, 5, 6, 7, 8)
+        dt5 = datetime.datetime(2016, 5, 6, 7, 8, 9)
+        dt6 = datetime.datetime(2016, 6, 7, 8, 9, 10)
         self.assertDictEqual(d.value, {
             'f1': [45602, 'foo3'],
             'f2': {'a': 11, 'b': 12},
             'm1': {
                 'x1': 0.2,
                 'x2': [datetime.datetime(2016, 11, 12, 13, 14, 15), datetime.datetime(2016, 12, 13, 14, 15, 16)],
-                'x3': [7, 'x'],
+                'x3': [7, 'z3'],
                 'x4': {'a': 8, 'b': 8}
             },
             'm2': [
-                {'x2': [datetime.datetime(2015, 1, 2, 3, 4, 5)], 'x3': [8, 'y'], 'x1': 0.2, 'x4': {'a': 9, 'b': 9}},
-                {'x2': [datetime.datetime(2015, 2, 3, 4, 5, 6), datetime.datetime(2015, 3, 4, 5, 6, 7)], 'x3': [9, 'z'], 'x1': 0.3, 'x4': {'a': 10, 'b': 10}}
-            ],
-            'd2': [
-                {
-                    'x1': 1.5,
-                    'x2': [datetime.datetime(2016, 4, 5, 6, 7, 8), datetime.datetime(2016, 5, 6, 7, 8, 9), datetime.datetime(2016, 6, 7, 8, 9, 10)],
-                    'x3': [45601, 'bar'],
-                    'x4': {'a': 3, 'b': 4}
-                }
+                {'x2': [dt1], 'x3': [8, 'z1'], 'x1': 0.2, 'x4': {'a': 9, 'b': 9}},
+                {'x2': [dt2, dt3], 'x3': [9, 'z2'], 'x1': 0.3, 'x4': {'a': 10, 'b': 10}}
             ],
             'd1': {
                 'x1': 1.5,
-                'x2': [datetime.datetime(2016, 4, 5, 6, 7, 8), datetime.datetime(2016, 5, 6, 7, 8, 9), datetime.datetime(2016, 6, 7, 8, 9, 10)],
-                'x3': [45601, 'bar'],
+                'x2': [dt4, dt5, dt6],
+                'x3': [45601, 'z2'],
                 'x4': {'a': 3, 'b': 4}
-            }
+            },
+            'd2': [
+                {
+                    'x1': 1.5,
+                    'x2': [dt4, dt5, dt6],
+                    'x3': [45601, 'z2'],
+                    'x4': {'a': 3, 'b': 4}
+                }
+            ]
         })
 
     @gen_test

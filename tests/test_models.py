@@ -9,7 +9,7 @@ import mokito
 
 class TestModels(unittest.TestCase):
     def test_model_get_1(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
                 'd1': int,
                 'd2': [str],
@@ -21,7 +21,7 @@ class TestModels(unittest.TestCase):
                 }
             }
 
-        f = Model0()
+        f = Model_0()
 
         self.assertEqual(f['d1'].get(), None)
         self.assertEqual(f['d1'].value, None)
@@ -45,7 +45,7 @@ class TestModels(unittest.TestCase):
         self.assertEqual(f['d4']['dd3'].value, [None, None])
 
     def test_model_get_2(self):
-        class SubModel0(mokito.Model):
+        class SubModel_0(mokito.Model):
             fields = {
                 'd1': int,
                 'd2': [str],
@@ -57,21 +57,21 @@ class TestModels(unittest.TestCase):
                 }
             }
 
-        class SubModel1(mokito.Model):
+        class SubModel_1(mokito.Model):
             fields = {
                 'x': int
             }
 
         class Model1(mokito.Model):
             fields = {
-                'm1': SubModel0,
-                'm2': SubModel1
+                'm1': SubModel_0,
+                'm2': SubModel_1
             }
 
-        class Model2(mokito.Model):
+        class Model_2(mokito.Model):
             fields = Model1
 
-        f = Model2()
+        f = Model_2()
 
         self.assertEqual(f['m1.d1'].get(), None)
         self.assertEqual(f['m1.d1'].value, None)
@@ -97,7 +97,7 @@ class TestModels(unittest.TestCase):
         self.assertEqual(f['m2']['x'].value, None)
 
     def test_model_set_1(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
                 'd1': int,
                 'd2': [str],
@@ -109,7 +109,7 @@ class TestModels(unittest.TestCase):
                 }
             }
 
-        f = Model0()
+        f = Model_0()
         self.assertDictEqual(f.get(), f.value)
         self.assertDictEqual(f.get(), {
             'd1': None,
@@ -289,7 +289,7 @@ class TestModels(unittest.TestCase):
         })
 
     def test_model_set_2(self):
-        class SubModel0(mokito.Model):
+        class SubModel_0(mokito.Model):
                 fields = {
                     'd1': int,
                     'd2': [str],
@@ -298,21 +298,21 @@ class TestModels(unittest.TestCase):
                     }
                 }
 
-        class SubModel1(mokito.Model):
+        class SubModel_1(mokito.Model):
             fields = {
                 'x': int
             }
 
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
-                'm1': SubModel0,
-                'm2': SubModel1
+                'm1': SubModel_0,
+                'm2': SubModel_1
             }
 
-        class Model1(mokito.Model):
-            fields = Model0
+        class Model_1(mokito.Model):
+            fields = Model_0
 
-        f = Model1()
+        f = Model_1()
         self.assertDictEqual(f.get(), f.value)
         self.assertDictEqual(f.get(), {
             'm1': {
@@ -430,10 +430,10 @@ class TestModels(unittest.TestCase):
         })
 
     def test_model_set_3(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {}
 
-        f = Model0()
+        f = Model_0()
         self.assertDictEqual(f.get(), f.value)
         self.assertDictEqual(f.get(), {})
 
@@ -466,10 +466,10 @@ class TestModels(unittest.TestCase):
         })
 
     def test_model_set_4(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {}
 
-        f = Model0()
+        f = Model_0()
 
         data = {
             'f1': 123,
@@ -483,7 +483,7 @@ class TestModels(unittest.TestCase):
         self.assertDictEqual(f.get(), data)
 
     def test_model_query_1(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
                 'd1': int,
                 'd2': [str],
@@ -496,7 +496,7 @@ class TestModels(unittest.TestCase):
                 'd5': {}
             }
 
-        f = Model0()
+        f = Model_0()
 
         self.assertDictEqual(f.query, {})
         f['d1'] = 123
@@ -608,7 +608,7 @@ class TestModels(unittest.TestCase):
         }})
 
     def test_model_query_2(self):
-        class SubModel0(mokito.Model):
+        class SubModel_0(mokito.Model):
             fields = {
                 'd1': int,
                 'd2': [str],
@@ -618,18 +618,18 @@ class TestModels(unittest.TestCase):
                 'd5': {}
             }
 
-        class SubModel1(mokito.Model):
+        class SubModel_1(mokito.Model):
             fields = {
                 'x': int
             }
 
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
-                'm1': SubModel0,
-                'm2': SubModel1
+                'm1': SubModel_0,
+                'm2': SubModel_1
             }
 
-        f = Model0()
+        f = Model_0()
 
         self.assertDictEqual(f.query, {})
         f['m1.d1'] = 123
@@ -677,10 +677,10 @@ class TestModels(unittest.TestCase):
         }})
 
     def test_model_field_query_3(self):
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {}
 
-        f = Model0()
+        f = Model_0()
 
         self.assertDictEqual(f.query, {})
         f.set({
@@ -705,7 +705,7 @@ class TestModels(unittest.TestCase):
         }})
 
     def test_model_json(self):
-        class SubModel0(mokito.Model):
+        class SubModel_0(mokito.Model):
                 fields = {
                     'd1': int,
                     'd2': [{
@@ -714,31 +714,31 @@ class TestModels(unittest.TestCase):
                     }]
                 }
 
-        class SubModel1(mokito.Model):
+        class SubModel_1(mokito.Model):
             fields = {
                 'x': str
             }
 
-        class Model0(mokito.Model):
+        class Model_0(mokito.Model):
             fields = {
-                'm1': SubModel0,
-                'm2': SubModel1
+                'm1': SubModel_0,
+                'm2': SubModel_1
             }
 
             @property
             def prop1(self):
                 return self['m1.d1'].value + 2
 
-        class Model1(mokito.Model):
-            fields = Model0
+        class Model_1(mokito.Model):
+            fields = Model_0
 
-            prop1 = Model0.prop1
+            prop1 = Model_0.prop1
 
             @property
             def prop2(self):
                 return self['m1.d1'].value * 2
 
-        f = Model1()
+        f = Model_1()
 
         dt1 = datetime.datetime(2015, 1, 2, 3, 4, 5)
         dt2 = datetime.datetime(2015, 2, 3, 4, 5, 6)
@@ -862,23 +862,30 @@ class TestModels(unittest.TestCase):
 
         dt1 = datetime.datetime(2016, 1, 2, 3, 4, 5)
         dt2 = datetime.datetime(2016, 2, 3, 4, 5, 6)
+        with self.assertRaises(mokito.errors.MokitoChoiceError):
+            d.set({
+                'x1': 123,
+                'x2': [dt1, dt2],
+                'x3': [123, 'foo'],
+                'x4': {'a': 1, 'b': 2}
+            })
         d.set({
             'x1': 123,
             'x2': [dt1, dt2],
-            'x3': [123, 'foo'],
+            'x3': [123, 1],
             'x4': {'a': 1, 'b': 2}
         })
         self.assertTrue(d.dirty)
         self.assertDictEqual(d.value, {
             'x1': 123.0,
             'x2': [dt1, dt2],
-            'x3': [123, 'foo'],
+            'x3': [123, 'z1'],
             'x4': {'a': 1, 'b': 2}
         })
         self.assertDictEqual(d.query, {'$set': {
             'x1': 123.0,
             'x2': [dt1, dt2],
-            'x3': [123, 'foo'],
+            'x3': [123, 'z1'],
             'x4.a': 1,
             'x4.b': 2
         }})
@@ -899,21 +906,21 @@ class TestModels(unittest.TestCase):
             'f2': dt1.isoformat(),
             'f3': dt2.isoformat(),
             'f4': 123,
-            'f5': 'foo',
+            'f5': 2,
             'f6': 1,
             'f7': 2
         }, {'f1': 'x1', 'f2': 'x2.0', 'f3': 'x2.1', 'f4': 'x3.0', 'f5': 'x3.1', 'f6': 'x4.a', 'f7': 'x4.b'})
         self.assertDictEqual(d.value, {
             'x1': 123.0,
             'x2': [dt1, dt2],
-            'x3': [123, 'foo'],
+            'x3': [123, 'z2'],
             'x4': {'a': 1, 'b': 2}
         })
         self.assertDictEqual(d.query, {
             '$set': {
                 'x1': 123.0,
                 'x2': [dt1, dt2],
-                'x3': [123, 'foo'],
+                'x3': [123, 'z2'],
                 'x4.a': 1,
                 'x4.b': 2
             }
@@ -1011,15 +1018,15 @@ class TestModels(unittest.TestCase):
 
         d = Document2()
 
-        d['d1'] = {'x1': 100, 'x2': [dt2], 'x3': (200, 'foo'), 'x4': {'b': 300}}
+        d['d1'] = {'x1': 100, 'x2': [dt2], 'x3': (200, 3), 'x4': {'b': 300}}
         self.assertTrue(d.dirty)
         self.assertDictEqual(d.value, {
             'f1': [None, None],
             'f2': {'a': None, 'b': None},
             'm1': {'x1': None, 'x2': [], 'x3': [None, None], 'x4': {'a': None, 'b': None}},
             'm2': [],
-            'd1': {'x1': 100.0, 'x2': [dt2], 'x3': [200, 'foo'], 'x4': {'a': None, 'b': 300}},
-            'd2': [],
+            'd1': {'x1': 100.0, 'x2': [dt2], 'x3': [200, 'z3'], 'x4': {'a': None, 'b': 300}},
+            'd2': []
         })
 
         with self.assertRaises(mokito.errors.MokitoDBREFError):
@@ -1066,7 +1073,7 @@ class TestModels(unittest.TestCase):
 
         d = Document2()
 
-        d['d2'].append({'x1': 100, 'x2': [dt1], 'x3': (200, 'foo'), 'x4': {'b': 300}})
+        d['d2'].append({'x1': 100, 'x2': [dt1], 'x3': (200, 1), 'x4': {'b': 300}})
         self.assertTrue(d.dirty)
         self.assertDictEqual(d.value, {
             'f1': [None, None],
@@ -1074,7 +1081,7 @@ class TestModels(unittest.TestCase):
             'm1': {'x1': None, 'x2': [], 'x3': [None, None], 'x4': {'a': None, 'b': None}},
             'm2': [],
             'd1': {'x1': None, 'x2': [], 'x3': [None, None], 'x4': {'a': None, 'b': None}},
-            'd2': [{'x1': 100.0, 'x2': [dt1], 'x3': [200, 'foo'], 'x4': {'a': None, 'b': 300}}],
+            'd2': [{'x1': 100.0, 'x2': [dt1], 'x3': [200, 'z1'], 'x4': {'a': None, 'b': 300}}],
         })
 
         with self.assertRaises(mokito.errors.MokitoDBREFError):
@@ -1086,7 +1093,7 @@ class TestModels(unittest.TestCase):
         self.assertDictEqual(d.query, {'$set': {'d2': [DBRef(Document1.__collection__, id1)]}})
 
         d.dirty_clear()
-        d['d2'][1] = {'x1': 200.0, 'x2': [dt2], 'x3': [300, 'foo'], 'x4': {'a': None, 'b': 400}}
+        d['d2'][1] = {'x1': 200.0, 'x2': [dt2], 'x3': [300, 2], 'x4': {'a': None, 'b': 400}}
         with self.assertRaises(mokito.errors.MokitoDBREFError):
             _ = d.query
 
@@ -1103,25 +1110,83 @@ class TestModels(unittest.TestCase):
         with self.assertRaises(mokito.errors.MokitoDBREFError):
             _ = d.query
 
-        self.assertDictEqual(d['d2'].value[0], {'x2': [dt2], 'x3': [300, 'foo'], 'x1': 55.0, 'x4': {'a': None, 'b': 400}})
+        self.assertDictEqual(d['d2'].value[0], {'x2': [dt2], 'x3': [300, 'z2'], 'x1': 55.0, 'x4': {'a': None, 'b': 400}})
 
-    def test_document_dbref(self):
-        from tests.util import Document1, Document2, col2_data1, col1_id1
+    def test_model_choices(self):
+        from mokito.fields import ChoiceField
+        ch1 = ['foo', 'bar']
+        ch2 = {'x': 1, 'y': 2}
+        ch3 = {'a': 100, 'b': 200}
 
-        d = Document2(**col2_data1)
-        self.assertDictEqual(d.value, {
-            'f1': [123, 'foo2'],
-            'f2': {'a': 5, 'b': 6},
-            'm1': {
-                'x1': 0.1,
-                'x2': [datetime.datetime(2016, 7, 8, 9, 10, 11), datetime.datetime(2016, 8, 9, 10, 11, 12)],
-                'x3': [7, 'x'],
-                'x4': {'a': 8, 'b': 8}
-            },
-            'm2': [{'x2': [datetime.datetime(2016, 9, 10, 11, 12, 13)], 'x3': [8, 'y'], 'x1': 0.2, 'x4': {'a': 9, 'b': 9}},
-                   {'x2': [datetime.datetime(2016, 10, 11, 12, 13, 14)], 'x3': [9, 'z'], 'x1': 0.3, 'x4': {'a': 10, 'b': 10}}],
-            'd2': [{'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
-                   {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}}],
-            'd1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}}
+        class Model_0(mokito.Model):
+            fields = {
+                'd1': ChoiceField(ch1),
+                'd2': [ChoiceField(ch2)],
+                'd3': (int, ChoiceField(ch3)),
+                'd4': {
+                    'dd1': ChoiceField(ch1),
+                    'dd2': [ChoiceField(ch2)],
+                    'dd3': (int, ChoiceField(ch3))
+                }
+            }
+
+        f = Model_0()
+        f['d1'] = 'foo'
+        f['d2'].append(1)
+        f['d3.1'] = 100
+        f['d4.dd1'] = 'foo'
+        f['d4.dd2'].append(1)
+        f['d4.dd3.1'] = 100
+        self.assertDictEqual(f.value, {
+            'd1': 'foo',
+            'd2': ['x'],
+            'd3': [None, 'a'],
+            'd4': {
+                'dd1': 'foo',
+                'dd2': ['x'],
+                'dd3': [None, 'a']
+            }
         })
-        self.assertEqual(d['d1'].dbref, DBRef(Document1.__collection__, col1_id1))
+
+        f.set({
+            'd1': 'bar',
+            'd2': [2],
+            'd3': [None, 200],
+            'd4': {
+                'dd1': 'bar',
+                'dd2': [2],
+                'dd3': [None, 200]
+            }
+        })
+        self.assertDictEqual(f.value, {
+            'd1': 'bar',
+            'd2': ['y'],
+            'd3': [None, 'b'],
+            'd4': {
+                'dd1': 'bar',
+                'dd2': ['y'],
+                'dd3': [None, 'b']
+            }
+        })
+
+        f.clear()
+        f.set({
+            'd1': 'foo',
+            'd2': ['x'],
+            'd3': [None, 'a'],
+            'd4': {
+                'dd1': 'foo',
+                'dd2': ['x'],
+                'dd3': [None, 'a']
+            }
+        }, inner=True)
+        self.assertDictEqual(f.value, {
+            'd1': 'foo',
+            'd2': ['x'],
+            'd3': [None, 'a'],
+            'd4': {
+                'dd1': 'foo',
+                'dd2': ['x'],
+                'dd3': [None, 'a']
+            }
+        })

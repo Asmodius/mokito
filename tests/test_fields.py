@@ -12,8 +12,10 @@ from mokito.fields import (
     StringField,
     BooleanField,
     ObjectIdField,
-    DateTimeField
+    DateTimeField,
+    ChoiceField
 )
+from mokito.errors import MokitoChoiceError
 
 
 class TestFields(unittest.TestCase):
@@ -163,3 +165,25 @@ class TestFields(unittest.TestCase):
         self.assertEqual(dt2.strftime('%d/%m/%y'), f.get(date_format='%d/%m/%y'))
         f.set('14/12/16', date_format='%d/%m/%y')
         self.assertEqual(datetime.datetime(2016, 12, 14), f.value)
+
+    def test_choice_field_1(self):
+        ch = {'a': 1, 'b': 2}
+        x = ChoiceField(ch)
+        f = Field.make(x)
+        self.assertDictEqual(x.choices, f.choices)
+
+        f.set(1)
+        self.assertEqual(f._val, 'a')
+        self.assertEqual(f.get(), 1)
+
+        f._val = 'c'
+        self.assertIsNone(f.get())
+
+        f.set(2)
+        self.assertEqual(f._val, 'b')
+        self.assertEqual(f.get(), 2)
+
+        with self.assertRaises(MokitoChoiceError):
+            f.set(333)
+
+        self.assertEqual(f.get(), 2)

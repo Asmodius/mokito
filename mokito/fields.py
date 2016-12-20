@@ -13,14 +13,14 @@ import pytz
 from bson import ObjectId, DBRef
 from dateutil.parser import parse
 
-from errors import MokitoDBREFError
+from errors import MokitoDBREFError, MokitoChoiceError
 from orm import Document
 from model import Model
 from tools import SEPARATOR
 
 
 class Field(object):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self._val = None
         self._dirty = False
 
@@ -48,6 +48,8 @@ class Field(object):
     def make(cls, rules=None):
         if rules is None:
             return Field()
+        elif isinstance(rules, Field):
+            return copy.deepcopy(rules)
         else:
             _type = rules if inspect.isclass(rules) else type(rules)
             if _type is int:
@@ -73,10 +75,9 @@ class Field(object):
             if issubclass(_type, Model):
                 return _type()
 
-            if issubclass(_type, Document):
-                print 'RTY', rules
-                return DocumentField()
-
+            # if issubclass(_type, Document):
+            #     print 'RTY', rules
+            #     return DocumentField()
             if issubclass(_type, Field):
                 return _type(rules)
             raise TypeError()
@@ -93,14 +94,14 @@ class IntField(Field):
     def set(self, value, **kwargs):
         if value is not None:
             value = int(value)
-        super(IntField, self).set(value)
+        super(IntField, self).set(value, **kwargs)
 
 
 class FloatField(Field):
     def set(self, value, **kwargs):
         if value is not None:
             value = float(value)
-        super(FloatField, self).set(value)
+        super(FloatField, self).set(value, **kwargs)
 
 
 class StringField(Field):
@@ -109,16 +110,18 @@ class StringField(Field):
 
     def set(self, value, **kwargs):
         if value is not None:
-            # TODO: add unicode -> str
-            value = str(value)
-        super(StringField, self).set(value)
+            if isinstance(value, unicode):
+                value = value.encode('utf-8')
+            else:
+                value = str(value)
+        super(StringField, self).set(value, **kwargs)
 
 
 class BooleanField(Field):
     def set(self, value, **kwargs):
         if value is not None:
             value = bool(value)
-        super(BooleanField, self).set(value)
+        super(BooleanField, self).set(value, **kwargs)
 
 
 class ObjectIdField(Field):
@@ -129,7 +132,7 @@ class ObjectIdField(Field):
     def set(self, value, **kwargs):
         if value is not None:
             value = ObjectId(value)
-        super(ObjectIdField, self).set(value)
+        super(ObjectIdField, self).set(value, **kwargs)
 
 
 class DateTimeField(Field):
@@ -152,7 +155,29 @@ class DateTimeField(Field):
                 value = datetime.datetime.strptime(value, date_format)
             else:
                 value = parse(value).replace(tzinfo=None)
-        super(DateTimeField, self).set(value)
+        super(DateTimeField, self).set(value, **kwargs)
+
+
+class ChoiceField(Field):
+    def __init__(self, choices, **kwargs):
+        super(ChoiceField, self).__init__()
+        if isinstance(choices, (list, type)):
+            choices = {i: i for i in choices}
+        self.choices = choices
+
+    def get(self, **kwargs):
+        return self.choices.get(self._val, None)
+
+    def set(self, value, inner=False, **kwargs):
+        if not inner:
+            if value is not None:
+                for k, v in self.choices.items():
+                    if v == value:
+                        value = k
+                        break
+                else:
+                    raise MokitoChoiceError(value)
+        super(ChoiceField, self).set(value, **kwargs)
 
 
 class CollectionField(Field):
@@ -499,17 +524,16 @@ class DictField(CollectionField):
 
         if value is not None:
             key_param, all_param = self._mk_param(**kwargs)
-
             for k, v in value.items():
                 self.setitem(k, v, **dict(key_param.get(k, {}), **all_param))
 
     def clear(self):
-        self._dirty = True
         if self._rules:
             for i in self._val.values():
                 i.clear()
         else:
             self._val = {}
+        self._dirty = True
 
     @property
     def query(self):
@@ -547,19 +571,6 @@ class DictField(CollectionField):
 
                     elif isinstance(v, Document):
                         raise MokitoDBREFError(v)
-                        # raise Exception('WTF')
-                        # # print 'DE1', v.dirty
-                        # # print 'DE2', v._empty
-                        # print 'DE3', v.query
-                        #
-                        # if v._empty:
-                        #     ret["$unset"][k] = ''
-                        #
-                        # else:
-                        #     if v._id is None or v.query:
-                        #         raise MokitoDBREFError(v)
-                        #     print 'NodeDocument!!', v.dbref
-                        #     ret["$set"][k] = v.dbref
 
                     elif isinstance(v, Model):
                         _q = v.query

@@ -15,7 +15,8 @@ from mokito.fields import (
     DateTimeField,
     DictField,
     TupleField,
-    ListField
+    ListField,
+    ChoiceField
 )
 
 
@@ -566,6 +567,23 @@ class TestCollectionFields(unittest.TestCase):
             'l': [{'l1': 123, 'l2': 'baz1'}, {'l1': 456, 'l2': 'baz2'}],
             't': [789, {'t2': None, 't1': dt2}]
         })
+
+    def test_dict_field_4(self):
+        ch1 = ['a', 'b']
+        ch2 = {'x': 1, 'y': 2}
+        data = {
+            's': ChoiceField(ch1),
+            'l': [ChoiceField(ch2)],
+            't': (int, ChoiceField(ch2)),
+        }
+        f = Field.make(data)
+        f['s'] = 'a'
+        f['l'].append(1)
+        f['t'] = [123, 2]
+
+        self.assertDictEqual(f.value, {'s': 'a', 'l': ['x'], 't': [123, 'y']})
+        self.assertDictEqual(f.get(), {'s': 'a', 'l': [1], 't': [123, 2]})
+        self.assertDictEqual(f.get(flat=True), {'s': 'a', 'l.0': 1, 't.0': 123, 't.1': 2})
 
     def test_field_query_1(self):
         f = Field.make([str])

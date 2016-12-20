@@ -76,10 +76,13 @@ class Document(Model):
     __connect_count__ = DEFAULT_CONNECTIONS
     BY_ID_ERROR = 'Запись не найдена'
 
-    def __init__(self, **data):
-        _id = data.pop('_id', None)
-        self._id = None if _id is None else ObjectId(_id)
-        super(Document, self).__init__(**data)
+    def __init__(self, data=None, **kwargs):
+        self._id = None
+        if data:
+            _id = data.pop('_id', None)
+            if _id:
+                self._id = ObjectId(_id)
+        super(Document, self).__init__(data, **kwargs)
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self._id)
@@ -130,14 +133,14 @@ class Document(Model):
             _fields = fields
         raise Return(dict(self._data.get(_fields, aliases, **kwargs), **data1))
 
-    def set(self, value, aliases=None):
+    def set(self, value, aliases=None, **kwargs):
         if isinstance(value, DBRef):
             self.dbref = value
         else:
             _id = value.pop('_id', None)
             if _id is not None:
                 self._id = ObjectId(_id)
-            self._data.set(value, aliases)
+            self._data.set(value, aliases, **kwargs)
 
     @classmethod
     def get_cursor(cls, database=None, collection=None):
@@ -184,7 +187,7 @@ class Document(Model):
         data = yield cur.find_one(self._id, fields=self.fields.keys())
         if data:
             self.clear()
-            self.set(data)
+            self.set(data, inner=True)
             self.dirty_clear()
             raise Return(True)
 
@@ -202,7 +205,7 @@ class Document(Model):
         fields = cls.fields.keys()
         data = yield cur.find_one(spec_or_id, fields=fields)
         if data:
-            self = cls(**data)
+            self = cls(data, inner=True)
             self._data.dirty_clear()
             if preload:
                 yield self.preload(*fields)
@@ -233,7 +236,7 @@ class Document(Model):
         cur = cls.get_cursor()
         fields = cls.fields.keys()
         data = yield cur.find(spec, fields, skip, limit, sort=sort, hint=hint)
-        res = Documents(cls(**i) for i in data)
+        res = Documents(cls(i, inner=True) for i in data)
         res.dirty_clear()
         if preload:
             yield res.preload(*fields)

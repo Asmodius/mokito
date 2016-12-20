@@ -27,12 +27,12 @@ class Model(object):
     def __str__(self):
         return '<%s: %s>' % (self.__class__.__name__, self._data.value)
 
-    def __init__(self, **data):
+    def __init__(self, data=None, **kwargs):
         from fields import Field
         # self._data = copy.deepcopy(Field.make(self.fields))
         self._data = Field.make(self.fields)
         if data:
-            self._data.set(data)
+            self._data.set(data, **kwargs)
 
     def __getitem__(self, key):
         return self._data.__getitem__(key)
@@ -62,8 +62,8 @@ class Model(object):
 
         return dict(self._data.get(_fields, aliases, **kwargs), **data1)
 
-    def set(self, value, aliases=None):
-        self._data.set(value, aliases)
+    def set(self, value, aliases=None, **kwargs):
+        self._data.set(value, aliases, **kwargs)
 
     @property
     def value(self):

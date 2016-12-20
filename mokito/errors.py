@@ -52,3 +52,7 @@ class MokitoORMError(MokitoError):
 
 class MokitoDBREFError(MokitoORMError):
     pass
+
+
+class MokitoChoiceError(MokitoORMError):
+    pass
