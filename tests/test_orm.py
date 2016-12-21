@@ -47,188 +47,181 @@ class ORMTestCase(AsyncTestCase):
         yield self.db.command('drop', TEST_COLLECTION1, safe=False)
         super(ORMTestCase, self).tearDown()
 
-    def test_databases(self):
-        self.assertIsInstance(mokito.ModelManager.databases[TEST_DB_NAME], mokito.Client)
-
-    @gen_test
-    def test_find_one_1(self):
-        x = yield Document1.find_one(col1_id1)
-        self.assertEqual(x._id, col1_id1)
-        y = yield Document1.by_id(col1_id1)
-        self.assertEqual(y._id, col1_id1)
-
-        data = col1_data1.copy()
-        data.pop('_id')
-        self.assertDictEqual(data, x.value)
-        self.assertDictEqual(data, y.value)
-
-        x = yield Document1.find_one(col1_id2)
-        y = yield Document1.by_id(col1_id2)
-        self.assertEqual(x._id, col1_id2)
-        self.assertEqual(y._id, col1_id2)
-        data = col1_data2.copy()
-        data.pop('_id')
-        data.pop('foo')
-        self.assertDictEqual(data, x.value)
-        self.assertDictEqual(data, y.value)
-
-    @gen_test
-    def test_find_one_2(self):
-        _id = ObjectId()
-        x = yield Document1.find_one(_id)
-        self.assertIsNone(x)
-
-        with self.assertRaises(InvalidId):
-            yield Document1.find_one('foo')
-
-        with self.assertRaises(mokito.errors.MokitoORMError):
-            yield Document1.by_id(_id)
-
-    @gen_test
-    def test_find_1(self):
-        x = yield Document1.find()
-        self.assertEqual(len(x), 2)
-
-        data = col1_data1.copy()
-        data.pop('_id')
-        self.assertDictEqual(data, x[0]._data.value)
-
-        data = col1_data2.copy()
-        data.pop('_id')
-        data.pop('foo')
-        self.assertDictEqual(data, x[1]._data.value)
-
-    @gen_test
-    def test_count(self):
-        self.assertEqual((yield Document1.count()), 2)
-
-    @gen_test
-    def test_save_1(self):
-        x = yield Document1.find_one(col1_id2)
-        self.assertFalse(x.dirty)
-        x['x1'] = 3
-        self.assertTrue(x.dirty)
-        self.assertDictEqual(x.query, {'$set': {'x1': 3.0}})
-        y = yield x.save()
-        self.assertTrue(y)
-        self.assertFalse(x.dirty)
-
-        data = yield self.db[TEST_COLLECTION1].find_one(col1_id2, ['x1'])
-        self.assertEqual(data['x1'], 3.0)
-        self.assertEqual(x['x1'].value, 3.0)
-
-        data = yield self.db[TEST_COLLECTION1].count()
-        self.assertEqual(data, 2)
-
-    @gen_test
-    def test_save_2(self):
-        data = col1_data1.copy()
-        del data['_id']
-
-        x = Document1(data, inner=True)
-        self.assertIsNone(x._id)
-        self.assertTrue(x.dirty)
-        self.assertDictEqual(x.value, data)
-
-        y = yield x.save()
-        self.assertTrue(y)
-        self.assertIsNotNone(x._id)
-        self.assertFalse(x.dirty)
-
-        data = yield self.db[TEST_COLLECTION1].find_one(x._id)
-        del data['_id']
-        self.assertDictEqual(x.value, data)
-        self.assertEqual((yield self.db[TEST_COLLECTION1].count()), 3)
-
-    @gen_test
-    def test_load_1(self):
-        d = yield Document2.find_one(col2_id1)
-        self.assertDictEqual(d['d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
-        self.assertEqual(d['d1'].dbref, col1_dbref1)
-
-        yield d['d1'].reread()
-        self.assertDictEqual(d['d1'].value, {
-            'x1': 0.5,
-            'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
-                   datetime.datetime(2016, 2, 3, 4, 5, 6),
-                   datetime.datetime(2016, 3, 4, 5, 6, 7)],
-            'x3': [123, 'z1'],
-            'x4': {'a': 1, 'b': 2}
-        })
-
-    @gen_test
-    def test_load_2(self):
-        d = yield Document2.find()
-
-        self.assertDictEqual(d['0.d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
-        self.assertEqual(d['0.d1'].dbref, col1_dbref1)
-        yield d['0.d1'].reread()
-        self.assertDictEqual(d['0.d1'].value, {
-            'x1': 0.5,
-            'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
-                   datetime.datetime(2016, 2, 3, 4, 5, 6),
-                   datetime.datetime(2016, 3, 4, 5, 6, 7)],
-            'x3': [123, 'z1'],
-            'x4': {'a': 1, 'b': 2}
-        })
-
-    @gen_test
-    def test_to_prop(self):
-        x = yield Document1.find_one(col1_id1)
-        self.assertEqual(x.prop1, x['x1'].value + 2)
-        self.assertEqual(x.prop2, x['x1'].value * 2)
-        x['x1'] = 10
-        self.assertEqual(x.prop1, 12.0)
-        self.assertEqual(x.prop2, 20.0)
+    # def test_databases(self):
+    #     self.assertIsInstance(mokito.ModelManager.databases[TEST_DB_NAME], mokito.Client)
+    #
+    # @gen_test
+    # def test_find_one_1(self):
+    #     x = yield Document1.find_one(col1_id1)
+    #     self.assertEqual(x._id, col1_id1)
+    #     y = yield Document1.by_id(col1_id1)
+    #     self.assertEqual(y._id, col1_id1)
+    #
+    #     data = col1_data1.copy()
+    #     data.pop('_id')
+    #     self.assertDictEqual(data, x.value)
+    #     self.assertDictEqual(data, y.value)
+    #
+    #     x = yield Document1.find_one(col1_id2)
+    #     y = yield Document1.by_id(col1_id2)
+    #     self.assertEqual(x._id, col1_id2)
+    #     self.assertEqual(y._id, col1_id2)
+    #     data = col1_data2.copy()
+    #     data.pop('_id')
+    #     data.pop('foo')
+    #     self.assertDictEqual(data, x.value)
+    #     self.assertDictEqual(data, y.value)
+    #
+    # @gen_test
+    # def test_find_one_2(self):
+    #     _id = ObjectId()
+    #     x = yield Document1.find_one(_id)
+    #     self.assertIsNone(x)
+    #
+    #     with self.assertRaises(InvalidId):
+    #         yield Document1.find_one('foo')
+    #
+    #     with self.assertRaises(mokito.errors.MokitoORMError):
+    #         yield Document1.by_id(_id)
+    #
+    # @gen_test
+    # def test_find_1(self):
+    #     x = yield Document1.find()
+    #     self.assertEqual(len(x), 2)
+    #
+    #     data = col1_data1.copy()
+    #     data.pop('_id')
+    #     self.assertDictEqual(data, x[0]._data.value)
+    #
+    #     data = col1_data2.copy()
+    #     data.pop('_id')
+    #     data.pop('foo')
+    #     self.assertDictEqual(data, x[1]._data.value)
+    #
+    # @gen_test
+    # def test_count(self):
+    #     self.assertEqual((yield Document1.count()), 2)
+    #
+    # @gen_test
+    # def test_save_1(self):
+    #     x = yield Document1.find_one(col1_id2)
+    #     self.assertFalse(x.dirty)
+    #     x['x1'] = 3
+    #     self.assertTrue(x.dirty)
+    #     self.assertDictEqual(x.query, {'$set': {'x1': 3.0}})
+    #     y = yield x.save()
+    #     self.assertTrue(y)
+    #     self.assertFalse(x.dirty)
+    #
+    #     data = yield self.db[TEST_COLLECTION1].find_one(col1_id2, ['x1'])
+    #     self.assertEqual(data['x1'], 3.0)
+    #     self.assertEqual(x['x1'].value, 3.0)
+    #
+    #     data = yield self.db[TEST_COLLECTION1].count()
+    #     self.assertEqual(data, 2)
+    #
+    # @gen_test
+    # def test_save_2(self):
+    #     data = col1_data1.copy()
+    #     del data['_id']
+    #
+    #     x = Document1(data, inner=True)
+    #     self.assertIsNone(x._id)
+    #     self.assertTrue(x.dirty)
+    #     self.assertDictEqual(x.value, data)
+    #
+    #     y = yield x.save()
+    #     self.assertTrue(y)
+    #     self.assertIsNotNone(x._id)
+    #     self.assertFalse(x.dirty)
+    #
+    #     data = yield self.db[TEST_COLLECTION1].find_one(x._id)
+    #     del data['_id']
+    #     self.assertDictEqual(x.value, data)
+    #     self.assertEqual((yield self.db[TEST_COLLECTION1].count()), 3)
+    #
+    # @gen_test
+    # def test_load_1(self):
+    #     d = yield Document2.find_one(col2_id1)
+    #     self.assertDictEqual(d['d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
+    #     self.assertEqual(d['d1'].dbref, col1_dbref1)
+    #
+    #     yield d['d1'].reread()
+    #     self.assertDictEqual(d['d1'].value, {
+    #         'x1': 0.5,
+    #         'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
+    #                datetime.datetime(2016, 2, 3, 4, 5, 6),
+    #                datetime.datetime(2016, 3, 4, 5, 6, 7)],
+    #         'x3': [123, 'z1'],
+    #         'x4': {'a': 1, 'b': 2}
+    #     })
+    #
+    # @gen_test
+    # def test_load_2(self):
+    #     d = yield Document2.find()
+    #
+    #     self.assertDictEqual(d['0.d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
+    #     self.assertEqual(d['0.d1'].dbref, col1_dbref1)
+    #     yield d['0.d1'].reread()
+    #     self.assertDictEqual(d['0.d1'].value, {
+    #         'x1': 0.5,
+    #         'x2': [datetime.datetime(2016, 1, 2, 3, 4, 5),
+    #                datetime.datetime(2016, 2, 3, 4, 5, 6),
+    #                datetime.datetime(2016, 3, 4, 5, 6, 7)],
+    #         'x3': [123, 'z1'],
+    #         'x4': {'a': 1, 'b': 2}
+    #     })
+    #
+    # @gen_test
+    # def test_to_prop(self):
+    #     x = yield Document1.find_one(col1_id1)
+    #     self.assertEqual(x.prop1, x['x1'].value + 2)
+    #     self.assertEqual(x.prop2, x['x1'].value * 2)
+    #     x['x1'] = 10
+    #     self.assertEqual(x.prop1, 12.0)
+    #     self.assertEqual(x.prop2, 20.0)
 
     @gen_test
     def test_to_json_1(self):
         d = yield Document1.find_one(col1_id1)
 
-        data = yield d.get(['_id', 'x1', 'x2', 'x3', 'x4'], date_format='iso', as_json=True)
+        data = d.get('id', 'x1', 'x2', 'x3', 'x4', date_format='iso', as_json=True)
         self.assertDictEqual(data, {
-            '_id': str(col1_id1),
+            'id': str(col1_id1),
             'x1': 0.5,
             'x2': ["2016-01-02T03:04:05", "2016-02-03T04:05:06", "2016-03-04T05:06:07"],
             'x3': [123, 1],
             'x4': {"a": 1, "b": 2}
         })
 
-        data = yield d.get(['x2', 'x3', 'x4'], date_format='iso', tz_name='Asia/Novosibirsk')
+        data = d.get('x2', 'x3', 'x4', date_format='iso', tz_name='Asia/Novosibirsk')
         self.assertDictEqual(data, {
             'x2': ['2016-01-02T09:04:05+06:00', '2016-02-03T10:05:06+06:00', '2016-03-04T11:06:07+06:00'],
             'x3': [123, 1],
             'x4': {"a": 1, "b": 2}
         })
 
-        data = yield d.get(['x1', 'prop1', 'prop2'])
+        data = d.get('x1', 'prop1', 'prop2')
         self.assertDictEqual(data, {
             'x1': 0.5,
             'prop1': 2.5,
             'prop2': 1.0
         })
 
-        data = yield d.get(['x1', 'prop1', 'prop2'], {'x1': 'a1', 'prop1': 'a2', 'prop2': 'a3'})
-        self.assertDictEqual(data, {
-            'a1': 0.5,
-            'a2': 2.5,
-            'a3': 1.0
-        })
-
     @gen_test
     def test_to_json_2(self):
         d = yield Document1.find()
 
-        data = yield d.get(['_id', 'x1', 'x2', 'x3', 'x4'], {'_id': 'f_id'}, date_format='iso', as_json=True)
+        data = d.get('id', 'x1', 'x2', 'x3', 'x4', date_format='iso', as_json=True)
         self.assertListEqual(data, [
             {
-                'f_id': str(col1_id1),
+                'id': str(col1_id1),
                 'x1': 0.5,
                 'x2': ['2016-01-02T03:04:05', '2016-02-03T04:05:06', '2016-03-04T05:06:07'],
                 'x3': [123, 1],
                 'x4': {'a': 1, 'b': 2}
             }, {
-                'f_id': str(col1_id2),
+                'id': str(col1_id2),
                 'x1': 1.5,
                 'x2': ['2016-04-05T06:07:08', '2016-05-06T07:08:09', '2016-06-07T08:09:10'],
                 'x3': [45601, 2],
@@ -236,31 +229,24 @@ class ORMTestCase(AsyncTestCase):
             }
         ])
 
-        data = yield d.get(['x2'], {'x2.0': 'f1', 'x2.1': 'f2', 'x2.2': 'f3'}, tz_name='Asia/Novosibirsk', flat=True)
+        data = d.get('x2', tz_name='Asia/Novosibirsk')
         self.assertListEqual(data, [
-            {
-                'f1': '2016-01-02T09:04:05+06:00',
-                'f2': '2016-02-03T10:05:06+06:00',
-                'f3': '2016-03-04T11:06:07+06:00'
-            }, {
-                'f1': '2016-04-05T12:07:08+06:00',
-                'f2': '2016-05-06T13:08:09+06:00',
-                'f3': '2016-06-07T14:09:10+06:00'
-            }
+            {'x2': ['2016-01-02T09:04:05+06:00', '2016-02-03T10:05:06+06:00', '2016-03-04T11:06:07+06:00']},
+            {'x2': ['2016-04-05T12:07:08+06:00', '2016-05-06T13:08:09+06:00', '2016-06-07T14:09:10+06:00']}
         ])
 
-        data = yield d.get(['x1', 'prop1', 'prop2'], {'x1': 'a1', 'prop1': 'a2', 'prop2': 'a3'})
+        data = d.get('x1', 'prop1', 'prop2')
         self.assertListEqual(data, [
-            {'a1': 0.5, 'a2': 2.5, 'a3': 1.0},
-            {'a1': 1.5, 'a2': 3.5, 'a3': 3.0}
+            {'x1': 0.5, 'prop1': 2.5, 'prop2': 1.0},
+            {'x1': 1.5, 'prop1': 3.5, 'prop2': 3.0}
         ])
 
     @gen_test
     def test_to_json_3(self):
         d = yield Document1.find()
-        data = yield d.get(['id', 'x1'], {'id': 'a1', 'x1': 'a2'})
-        self.assertListEqual(data, [{'a1': str(col1_id1), 'a2': 0.5},
-                                    {'a1': str(col1_id2), 'a2': 1.5}])
+        data = d.get('id', 'x1')
+        self.assertListEqual(data, [{'id': str(col1_id1), 'x1': 0.5},
+                                    {'id': str(col1_id2), 'x1': 1.5}])
 
     @gen_test
     def test_from_json_1(self):

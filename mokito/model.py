@@ -46,24 +46,20 @@ class Model(object):
     def setitem(self, key, value, **kwargs):
         self._data.setitem(key, value, **kwargs)
 
-    def get(self, fields=None, aliases=None, **kwargs):
-        data1 = {}
+    def get(self, *fields, **kwargs):
+        data = {}
+        _fields = []
         if fields:
-            if aliases is None:
-                aliases = {}
-            _fields = []
             for i in fields:
                 if hasattr(self, i):
-                    data1[aliases.get(i, i)] = getattr(self, i)
+                    data[i] = getattr(self, i)
                 else:
                     _fields.append(i)
-        else:
-            _fields = fields
 
-        return dict(self._data.get(_fields, aliases, **kwargs), **data1)
+        return dict(self._data.get(*_fields, **kwargs), **data)
 
-    def set(self, value, aliases=None, **kwargs):
-        self._data.set(value, aliases, **kwargs)
+    def set(self, value, **kwargs):
+        self._data.set(value, **kwargs)
 
     @property
     def value(self):

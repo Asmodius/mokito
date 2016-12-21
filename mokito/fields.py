@@ -74,10 +74,6 @@ class Field(object):
                 return DictField(rules)
             if issubclass(_type, Model):
                 return _type()
-
-            # if issubclass(_type, Document):
-            #     print 'RTY', rules
-            #     return DocumentField()
             if issubclass(_type, Field):
                 return _type(rules)
             raise TypeError()
@@ -160,7 +156,7 @@ class DateTimeField(Field):
 
 class ChoiceField(Field):
     def __init__(self, choices, **kwargs):
-        super(ChoiceField, self).__init__()
+        super(ChoiceField, self).__init__(**kwargs)
         if isinstance(choices, (list, type)):
             choices = {i: i for i in choices}
         self.choices = choices
@@ -196,6 +192,12 @@ class CollectionField(Field):
 
     def setitem(self, key, value, **kwargs):
         raise NotImplemented
+
+    def set(self, value, **kwargs):
+        if value is not None:
+            key_param, all_param = self._mk_param(**kwargs)
+            for k, v in value.items():
+                self.setitem(k, v, **dict(key_param.get(k, {}), **all_param))
 
     def dirty_clear(self):
         self._dirty = False
@@ -296,56 +298,29 @@ class ArrayField(CollectionField):
             else:
                 x.set(value, **kwargs)
 
-    def get(self, fields=None, aliases=None, **kwargs):
-        aliases = {} if aliases is None else {str(k): v for k, v in aliases.items()}
-
+    def get(self, *fields, **kwargs):
         key_param, all_param = self._mk_param(**kwargs)
 
         _fields = OrderedDict()
-        if fields is None:
-            for k in range(len(self)):
-                _fields[str(k)] = []
+        for k in fields or range(len(self)):
+            k1, _, k2 = str(k).partition(SEPARATOR)
+            _fields.setdefault(k1, [])
+            if k2 and k2 not in _fields[k1]:
+                _fields[k1].append(k2)
 
-        else:
-            for k in fields:
-                k1, _, k2 = str(k).partition(SEPARATOR)
-                _fields.setdefault(k1, [])
-                if k2 and k2 not in _fields[k1]:
-                    _fields[k1].append(k2)
-
-        flat = kwargs.get('flat', False)
-        res = {} if flat else OrderedDict()
-
+        ret = []
         for k1, k2 in _fields.items():
-            k3 = aliases.get(k1, k1)
             if k1 in self._val:
-                x = self._val[k1].get(**dict(key_param.get(k1, {}), fields=k2 or None, **all_param))
-                if flat and x and isinstance(x, dict):
-                    for k4, v4 in x.items():
-                        k3 = '%s.%s' % (k1, k4)
-                        k3 = aliases.get(k3, k3)
-                        res[k3] = v4
-                else:
-                    res[k3] = x
+                x = self._val[k1].get(*k2, **dict(key_param.get(k1, {}), **all_param))
             else:
-                res[k3] = None
-        return res if flat else res.values()
+                x = None
+            ret.append(x)
+        return ret
 
-    def set(self, value, aliases=None, **kwargs):
-        x = value.items() if isinstance(value, dict) else enumerate(value)
-        value = {str(k): v for k, v in x}
-
-        if aliases and value:
-            aliases = {str(k): v for k, v in aliases.items()}
-            _value = {aliases.get(k, k): v for k, v in value.items()}
-            if _value.keys() != value.keys():
-                self.set(_value, **kwargs)
-                return
-
-        if value is not None:
-            key_param, all_param = self._mk_param(**kwargs)
-            for k, v in value.items():
-                self.setitem(k, v, **dict(key_param.get(k, {}), **all_param))
+    def set(self, value, **kwargs):
+        if isinstance(value, (list, tuple)):
+            value = {str(k): v for k, v in enumerate(value)}
+        super(ArrayField, self).set(value, **kwargs)
 
 
 class ListField(ArrayField):
@@ -372,7 +347,7 @@ class ListField(ArrayField):
             del x[k2]
             self._dirty = True
         else:
-            self.pop(k1)
+            self.pop(int(k1))
 
     def clear(self):
         self._val = {}
@@ -481,51 +456,24 @@ class DictField(CollectionField):
     def value(self):
         return {k: v.value for k, v in self._val.items()}
 
-    def get(self, fields=None, aliases=None, **kwargs):
-        if aliases is None:
-            aliases = {}
-
+    def get(self, *fields, **kwargs):
         key_param, all_param = self._mk_param(**kwargs)
 
-        if fields is None:
-            _fields = {i: [] for i in self._val.keys()}
-        else:
-            _fields = {}
-            for k in fields:
-                k1, _, k2 = str(k).partition(SEPARATOR)
-                _fields.setdefault(k1, [])
-                if k2 and k2 not in _fields[k1]:
-                    _fields[k1].append(k2)
+        _fields = {}
+        for k in fields or self._val.keys():
+            k1, _, k2 = str(k).partition(SEPARATOR)
+            _fields.setdefault(k1, [])
+            if k2 and k2 not in _fields[k1]:
+                _fields[k1].append(k2)
 
-        flat = kwargs.get('flat', False)
-
-        res = {}
+        ret = {}
         for k1, k2 in _fields.items():
-            k3 = aliases.get(k1, k1)
             if k1 in self._val:
-                x = self._val[k1].get(**dict(key_param.get(k1, {}), fields=k2 or None, **all_param))
-                if flat and x and isinstance(x, dict):
-                    for k4, v4 in x.items():
-                        k3 = '%s.%s' % (k1, k4)
-                        k3 = aliases.get(k3, k3)
-                        res[k3] = v4
-                else:
-                    res[k3] = x
+                x = self._val[k1].get(*k2, **dict(key_param.get(k1, {}), **all_param))
             else:
-                res[k3] = None
-        return res
-
-    def set(self, value, aliases=None, **kwargs):
-        if aliases and value:
-            _value = {aliases.get(k, k): v for k, v in value.items()}
-            if _value.keys() != value.keys():
-                self.set(_value, **kwargs)
-                return
-
-        if value is not None:
-            key_param, all_param = self._mk_param(**kwargs)
-            for k, v in value.items():
-                self.setitem(k, v, **dict(key_param.get(k, {}), **all_param))
+                x = None
+            ret[k1] = x
+        return ret
 
     def clear(self):
         if self._rules:
@@ -587,7 +535,3 @@ class DictField(CollectionField):
         if not ret["$unset"]:
             del ret["$unset"]
         return ret
-
-
-class DocumentField(object):
-    pass
