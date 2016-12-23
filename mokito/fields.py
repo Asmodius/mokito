@@ -24,6 +24,9 @@ class Field(object):
         self._val = None
         self._dirty = False
 
+    def __str__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self.value)
+
     @property
     def dirty(self):
         return self._dirty
@@ -82,11 +85,13 @@ class Field(object):
         self._val = None
         self._dirty = True
 
-    def __str__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self.value)
-
 
 class IntField(Field):
+    def __iadd__(self, other):
+        if isinstance(other, Field):
+            other = other.value
+        return (self._val or 0) + other
+
     def set(self, value, **kwargs):
         if value is not None:
             value = int(value)
@@ -445,6 +450,12 @@ class DictField(CollectionField):
                     self._del_docs.add(k1)
                     self._add_docs.discard(k1)
                     del self[k1]
+                elif isinstance(value, Document):
+                    self._del_docs.discard(k1)
+                    self._add_docs.add(k1)
+                    self._val[k1] = value
+                    if x.id != value.id:
+                        self._dirty = True
                 else:
                     self._del_docs.discard(k1)
                     self._add_docs.add(k1)

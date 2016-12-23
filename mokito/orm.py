@@ -27,12 +27,15 @@ class Documents(UserList):
     def __getattr__(self, item):
         return [getattr(i, item) for i in self.data]
 
+    def __call__(self, method_name, *args, **kwargs):
+        return [getattr(i, method_name)(*args, **kwargs) for i in self.data]
+
     def dirty_clear(self):
         map(lambda i: i.dirty_clear(), self.data)
 
-    # @coroutine
-    # def reread(self, *fields):
-    #     yield [i.reread(*fields) for i in self.data]
+    @coroutine
+    def reread(self, *fields):
+        yield [i.reread(*fields) for i in self.data]
 
     # @property
     # def value(self):
@@ -62,6 +65,7 @@ class Document(Model):
     BY_ID_ERROR = 'Запись не найдена'
 
     def __init__(self, data=None, **kwargs):
+        self.loaded = False
         self._id = None
         if data:
             _id = data.pop('_id', None)
@@ -71,6 +75,9 @@ class Document(Model):
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self._id)
+
+    def __call__(self, method_name, *args, **kwargs):
+        return getattr(self, method_name)(*args, **kwargs)
 
     @property
     def id(self):
@@ -128,8 +135,21 @@ class Document(Model):
             if data:
                 self.clear()
                 self.set(data, inner=True)
-                self.dirty_clear()
+                self._data.dirty_clear()
+                self.loaded = True
                 raise Return(True)
+
+    @classmethod
+    @coroutine
+    def by_id(cls, _id):
+        if _id:
+            try:
+                self = yield cls.find_one(_id)
+            except:
+                self = None
+            if self:
+                raise Return(self)
+        raise MokitoORMError(cls.BY_ID_ERROR)
 
     @classmethod
     @coroutine
@@ -147,19 +167,8 @@ class Document(Model):
         if data:
             self = cls(data, inner=True)
             self._data.dirty_clear()
+            self.loaded = True
             raise Return(self)
-
-    @classmethod
-    @coroutine
-    def by_id(cls, _id):
-        if _id:
-            try:
-                self = yield cls.find_one(_id)
-            except:
-                self = None
-            if self:
-                raise Return(self)
-        raise MokitoORMError(cls.BY_ID_ERROR)
 
     @classmethod
     @coroutine
