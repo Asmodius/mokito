@@ -25,24 +25,34 @@ class TestModels(unittest.TestCase):
 
         self.assertEqual(f['d1'].get(), None)
         self.assertEqual(f['d1'].value, None)
+        self.assertEqual(f['d1'].self_value, None)
         self.assertEqual(f['d2'].get(), [])
         self.assertEqual(f['d2'].value, [])
+        self.assertEqual(f['d2'].self_value, [])
         self.assertEqual(f['d3'].get(), [None, None])
         self.assertEqual(f['d3'].value, [None, None])
+        self.assertEqual(f['d3'].self_value, [None, None])
         self.assertDictEqual(f['d4'].get(), {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertDictEqual(f['d4'].value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
+        self.assertDictEqual(f['d4'].self_value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertEqual(f['d4.dd1'].get(), None)
         self.assertEqual(f['d4.dd1'].value, None)
+        self.assertEqual(f['d4.dd1'].self_value, None)
         self.assertEqual(f['d4']['dd1'].get(), None)
         self.assertEqual(f['d4']['dd1'].value, None)
+        self.assertEqual(f['d4']['dd1'].self_value, None)
         self.assertEqual(f['d4.dd2'].get(), [])
         self.assertEqual(f['d4.dd2'].value, [])
+        self.assertEqual(f['d4.dd2'].self_value, [])
         self.assertEqual(f['d4']['dd2'].get(), [])
         self.assertEqual(f['d4']['dd2'].value, [])
+        self.assertEqual(f['d4']['dd2'].self_value, [])
         self.assertEqual(f['d4.dd3'].get(), [None, None])
         self.assertEqual(f['d4.dd3'].value, [None, None])
+        self.assertEqual(f['d4.dd3'].self_value, [None, None])
         self.assertEqual(f['d4']['dd3'].get(), [None, None])
         self.assertEqual(f['d4']['dd3'].value, [None, None])
+        self.assertEqual(f['d4']['dd3'].self_value, [None, None])
 
     def test_model_get_2(self):
         class SubModel0A(mokito.Model):
@@ -74,25 +84,36 @@ class TestModels(unittest.TestCase):
         f = Model2A()
         self.assertEqual(f['m1.d1'].get(), None)
         self.assertEqual(f['m1.d1'].value, None)
+        self.assertEqual(f['m1.d1'].self_value, None)
         self.assertEqual(f['m1.d2'].get(), [])
         self.assertEqual(f['m1.d2'].value, [])
+        self.assertEqual(f['m1.d2'].self_value, [])
         self.assertEqual(f['m1.d3'].get(), [None, None])
         self.assertEqual(f['m1.d3'].value, [None, None])
+        self.assertEqual(f['m1.d3'].self_value, [None, None])
         self.assertDictEqual(f['m1.d4'].get(), {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertDictEqual(f['m1.d4'].value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
+        self.assertDictEqual(f['m1.d4'].self_value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertEqual(f['m1.d4.dd1'].get(), None)
         self.assertEqual(f['m1.d4.dd1'].value, None)
+        self.assertEqual(f['m1.d4.dd1'].self_value, None)
         self.assertEqual(f['m1.d4']['dd1'].get(), None)
         self.assertEqual(f['m1.d4']['dd1'].value, None)
+        self.assertEqual(f['m1.d4']['dd1'].self_value, None)
         self.assertEqual(f['m1.d4.dd2'].get(), [])
         self.assertEqual(f['m1.d4.dd2'].value, [])
+        self.assertEqual(f['m1.d4.dd2'].self_value, [])
         self.assertEqual(f['m1.d4']['dd2'].get(), [])
         self.assertEqual(f['m1.d4']['dd2'].value, [])
+        self.assertEqual(f['m1.d4']['dd2'].self_value, [])
         self.assertEqual(f['m1.d4.dd3'].get(), [None, None])
         self.assertEqual(f['m1.d4.dd3'].value, [None, None])
+        self.assertEqual(f['m1.d4.dd3'].self_value, [None, None])
         self.assertEqual(f['m1.d4']['dd3'].get(), [None, None])
         self.assertEqual(f['m1.d4']['dd3'].value, [None, None])
+        self.assertEqual(f['m1.d4']['dd3'].self_value, [None, None])
         self.assertEqual(f['m2']['x'].value, None)
+        self.assertEqual(f['m2']['x'].self_value, None)
 
     def test_model_set_1(self):
         class Model0A(mokito.Model):
@@ -109,6 +130,7 @@ class TestModels(unittest.TestCase):
 
         f = Model0A()
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': None,
             'd2': [],
@@ -122,6 +144,7 @@ class TestModels(unittest.TestCase):
 
         f['d1'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': [],
@@ -135,6 +158,7 @@ class TestModels(unittest.TestCase):
 
         f['d2.0'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['123'],
@@ -148,6 +172,7 @@ class TestModels(unittest.TestCase):
 
         f['d2'][1] = 'foo'
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['123', 'foo'],
@@ -161,6 +186,7 @@ class TestModels(unittest.TestCase):
 
         f['d2'].append('bar')
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['123', 'foo', 'bar'],
@@ -174,6 +200,7 @@ class TestModels(unittest.TestCase):
 
         f['d2'].set(['z', 123])
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -188,6 +215,7 @@ class TestModels(unittest.TestCase):
         f['d3.0'] = 123
         f['d3.1'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -201,6 +229,7 @@ class TestModels(unittest.TestCase):
 
         f['d3'] = [None, 'foo']
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -214,6 +243,7 @@ class TestModels(unittest.TestCase):
 
         f['d4.dd1'] = 456
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -227,6 +257,7 @@ class TestModels(unittest.TestCase):
 
         f['d4.dd2'].append('bar')
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -240,6 +271,7 @@ class TestModels(unittest.TestCase):
 
         f['d4.dd2.2'] = 'x'
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -253,6 +285,7 @@ class TestModels(unittest.TestCase):
 
         f['d4.dd3.1'] = 456
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 123,
             'd2': ['z', '123', 'bar'],
@@ -275,6 +308,7 @@ class TestModels(unittest.TestCase):
             }
         })
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'd1': 456,
             'd2': ['foo', 'bar', 'bar'],
@@ -312,6 +346,7 @@ class TestModels(unittest.TestCase):
 
         f = Model1A()
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': None,
@@ -327,6 +362,7 @@ class TestModels(unittest.TestCase):
 
         f['m1']['d1'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 123,
@@ -342,6 +378,7 @@ class TestModels(unittest.TestCase):
 
         f['m1.d2.0'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 123,
@@ -357,6 +394,7 @@ class TestModels(unittest.TestCase):
 
         f['m1']['d2'][1] = 'foo'
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 123,
@@ -373,6 +411,7 @@ class TestModels(unittest.TestCase):
         f['m2'].set({'x': 456})
 
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 123,
@@ -388,6 +427,7 @@ class TestModels(unittest.TestCase):
 
         f['m1.d4.dd3.1'] = 'x'
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 123,
@@ -414,6 +454,7 @@ class TestModels(unittest.TestCase):
             }
         })
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'm1': {
                 'd1': 456,
@@ -433,14 +474,17 @@ class TestModels(unittest.TestCase):
 
         f = Model0A()
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {})
 
         f['f1'] = 123
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {'f1': 123})
 
         f['f2'] = ['foo']
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'f1': 123,
             'f2': ['foo']
@@ -448,6 +492,7 @@ class TestModels(unittest.TestCase):
 
         f['f3'] = ('bar', 123)
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'f1': 123,
             'f2': ['foo'],
@@ -456,6 +501,7 @@ class TestModels(unittest.TestCase):
 
         f['f4'] = {'a': 1, 'b': 'foo'}
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), {
             'f1': 123,
             'f2': ['foo'],
@@ -477,6 +523,7 @@ class TestModels(unittest.TestCase):
         f.set(data)
         data['f3'] = list(data['f3'])
         self.assertDictEqual(f.get(), f.value)
+        self.assertDictEqual(f.get(), f.self_value)
         self.assertDictEqual(f.get(), data)
 
     def test_model_query_1(self):
@@ -776,6 +823,7 @@ class TestModels(unittest.TestCase):
         from tests.util import Document1
 
         d = Document1()
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'x1': None,
             'x2': [],
@@ -799,6 +847,7 @@ class TestModels(unittest.TestCase):
             'x4': {'a': 1, 'b': 2}
         })
         self.assertTrue(d.dirty)
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'x1': 123.0,
             'x2': [dt1, dt2],
@@ -837,6 +886,7 @@ class TestModels(unittest.TestCase):
         from tests.util import Document2
 
         d = Document2()
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'f1': [None, None],
             'f2': {'a': None, 'b': None},
@@ -853,6 +903,7 @@ class TestModels(unittest.TestCase):
             'f1': [111, 'x'],
             'f2': {'a': 222, 'b': None},
         })
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'f1': [111, 'x'],
             'f2': {'a': 222, 'b': None},
@@ -920,6 +971,7 @@ class TestModels(unittest.TestCase):
 
         d['d1'] = {'x1': 100, 'x2': [dt2], 'x3': (200, 3), 'x4': {'b': 300}}
         self.assertTrue(d.dirty)
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'f1': [None, None],
             'f2': {'a': None, 'b': None},
@@ -975,6 +1027,7 @@ class TestModels(unittest.TestCase):
 
         d['d2'].append({'x1': 100, 'x2': [dt1], 'x3': (200, 1), 'x4': {'b': 300}})
         self.assertTrue(d.dirty)
+        self.assertIsNone(d.self_value)
         self.assertDictEqual(d.value, {
             'f1': [None, None],
             'f2': {'a': None, 'b': None},
@@ -1011,6 +1064,7 @@ class TestModels(unittest.TestCase):
             _ = d.query
 
         self.assertDictEqual(d['d2'].value[0], {'x2': [dt2], 'x3': [300, 'z2'], 'x1': 55.0, 'x4': {'a': None, 'b': 400}})
+        self.assertIsNone(d['d2'].self_value[0])
 
     def test_model_choices(self):
         from mokito.fields import ChoiceField
@@ -1047,6 +1101,16 @@ class TestModels(unittest.TestCase):
                 'dd3': [None, 'a']
             }
         })
+        self.assertDictEqual(f.self_value, {
+            'd1': 'foo',
+            'd2': ['x'],
+            'd3': [None, 'a'],
+            'd4': {
+                'dd1': 'foo',
+                'dd2': ['x'],
+                'dd3': [None, 'a']
+            }
+        })
 
         f.set({
             'd1': 'bar',
@@ -1059,6 +1123,16 @@ class TestModels(unittest.TestCase):
             }
         })
         self.assertDictEqual(f.value, {
+            'd1': 'bar',
+            'd2': ['y'],
+            'd3': [None, 'b'],
+            'd4': {
+                'dd1': 'bar',
+                'dd2': ['y'],
+                'dd3': [None, 'b']
+            }
+        })
+        self.assertDictEqual(f.self_value, {
             'd1': 'bar',
             'd2': ['y'],
             'd3': [None, 'b'],
@@ -1081,6 +1155,16 @@ class TestModels(unittest.TestCase):
             }
         }, inner=True)
         self.assertDictEqual(f.value, {
+            'd1': 'foo',
+            'd2': ['x'],
+            'd3': [None, 'a'],
+            'd4': {
+                'dd1': 'foo',
+                'dd2': ['x'],
+                'dd3': [None, 'a']
+            }
+        })
+        self.assertDictEqual(f.self_value, {
             'd1': 'foo',
             'd2': ['x'],
             'd3': [None, 'a'],

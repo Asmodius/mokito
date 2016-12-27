@@ -47,6 +47,10 @@ class Field(object):
     def value(self):
         return self._val
 
+    @property
+    def self_value(self):
+        return self._val
+
     @classmethod
     def make(cls, rules=None):
         if rules is None:
@@ -247,6 +251,10 @@ class ArrayField(CollectionField):
     @property
     def value(self):
         return [self._val[i].value if i in self._val else None for i in map(str, range(len(self)))]
+
+    @property
+    def self_value(self):
+        return [self._val[i].self_value if i in self._val else None for i in map(str, range(len(self)))]
 
     @property
     def query(self):
@@ -472,6 +480,10 @@ class DictField(CollectionField):
     @property
     def value(self):
         return {k: v.value for k, v in self._val.items()}
+
+    @property
+    def self_value(self):
+        return {k: v.self_value for k, v in self._val.items()}
 
     def get(self, *fields, **kwargs):
         key_param, all_param = self._mk_param(**kwargs)

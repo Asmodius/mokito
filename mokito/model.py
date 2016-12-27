@@ -67,6 +67,10 @@ class Model(object):
         return self._data.value
 
     @property
+    def self_value(self):
+        return self._data.self_value
+
+    @property
     def dirty(self):
         return self._data.dirty
 
@@ -79,57 +83,3 @@ class Model(object):
 
     def dirty_clear(self):
         self._data.dirty_clear()
-
-    # @coroutine
-    # def to_json(self, *fields, **kwargs):
-    #     print 'JON1', fields
-    #     x = self._data.to_json()
-    #     print 'JON2', x
-    #     # document = kwargs.pop('document', None)
-    #     # data = {}
-    #     #
-    #     # fields = set(itertools.chain(*[self.roles[i] for i in args]))
-    #     # for k1 in fields:
-    #     #     k2 = self.aliases.get(k1, k1)
-    #     #     if k2 == '_id':
-    #     #         v = document.id if document else None
-    #     #     elif document and hasattr(document, k2):
-    #     #         print 'M1', k1, k2
-    #     #         v = getattr(document, k2)
-    #     #         if is_future(v):
-    #     #             v = yield v
-    #     #     elif hasattr(self, k2):
-    #     #         print 'M2', k1, k2
-    #     #         v = getattr(document, k2)
-    #     #         if is_future(v):
-    #     #             v = yield v
-    #     #     else:
-    #     #         v = self._data[k2].to_json(**kwargs)
-    #     #     data[k1] = v
-    #     # raise Return(data)
-    #
-    #
-    # #     for i in field_data:
-    # #         if i['attr']:
-    # #             v = getattr(self, i['field'])
-    # #             if is_future(v):
-    # #                 v = yield v
-    # #         else:
-    # #             yield self.preload(i['field'], cache=cache)
-    # #             try:
-    # #                 v = self._data[i['field']]
-    # #             except (ValueError, AttributeError):
-    # #                 v = None
-    #
-    # #         if isinstance(v, Node):
-    # #             v = v.value()
-    # #         if v is not None:
-    # #             if isinstance(v, ObjectId):
-    # #                 v = str(v)
-    # #             elif isinstance(v, Document):
-    # #                 v = yield v.to_json(cache=cache)
-    # #         data[i['alias']] = v
-    # #     raise Return(data)
-    #
-    # def from_json(self):
-    #     pass

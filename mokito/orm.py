@@ -80,6 +80,10 @@ class Document(Model):
         return getattr(self, method_name)(*args, **kwargs)
 
     @property
+    def self_value(self):
+        return None
+
+    @property
     def id(self):
         if self._id is not None:
             return str(self._id)
@@ -108,6 +112,7 @@ class Document(Model):
         if isinstance(value, DBRef):
             self.dbref = value
         else:
+            value = value.copy()
             _id = value.pop('_id', None)
             if _id is not None:
                 self._id = ObjectId(_id)
@@ -203,21 +208,20 @@ class Document(Model):
 
     @coroutine
     def save(self, safe=True):
-        if self.dirty:
-            q = self._data.query
+        if self._id is None:
             cur = self.get_cursor()
+            self._id = yield cur.insert(self._data.self_value, safe=safe)
+            self.dirty_clear()
+            if safe:
+                raise Return(True)
 
-            if self._id is None:
-                self._id = yield cur.insert(self._data.value, safe)
+        elif self.dirty:
+            cur = self.get_cursor()
+            res = yield cur.update(self._id, self._data.query, safe=safe)
+            if res:
                 self.dirty_clear()
                 if safe:
-                    raise Return(True)
-            else:
-                res = yield cur.update(self._id, q, safe=safe)
-                if res:
-                    self.dirty_clear()
-                    if safe:
-                        raise Return(res)
+                    raise Return(res)
 
     @coroutine
     def remove(self, safe=True):

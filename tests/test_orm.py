@@ -126,6 +126,72 @@ class ORMTestCase(AsyncTestCase):
         self.assertEqual((yield self.db[u.TEST_COLLECTION1].count()), 3)
 
     @gen_test
+    def test_save_3(self):
+        x = u.Document2()
+
+        self.assertIsNone(x.id)
+        self.assertEqual((yield self.db[u.TEST_COLLECTION2].count()), 2)
+
+        res = yield x.save()
+        self.assertTrue(res)
+
+        self.assertDictEqual(x.value, {
+            'f1': [None, None],
+            'f2': {'a': None, 'b': None},
+            'm1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'm2': [],
+            'd1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'd2': []
+        })
+        self.assertIsNotNone(x.id)
+        self.assertEqual((yield self.db[u.TEST_COLLECTION2].count()), 3)
+
+        res = yield self.db[u.TEST_COLLECTION2].find_one({'_id': {'$nin': [u.col2_id1, u.col2_id2]}})
+        self.assertIsNotNone(res.pop('_id'))
+        self.assertDictEqual(res, {
+            'f1': [None, None],
+            'f2': {'a': None, 'b': None},
+            'm1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'm2': [],
+            'd2': [],
+            'd1': None
+        })
+
+    @gen_test
+    def test_save_4(self):
+        x = u.Document2()
+        x['f1.1'] = 'foo'
+        x['f2.a'] = 123
+
+        self.assertIsNone(x.id)
+        self.assertEqual((yield self.db[u.TEST_COLLECTION2].count()), 2)
+
+        res = yield x.save()
+        self.assertTrue(res)
+
+        self.assertDictEqual(x.value, {
+            'f1': [None, 'foo'],
+            'f2': {'a': 123, 'b': None},
+            'm1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'm2': [],
+            'd1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'd2': []
+        })
+        self.assertIsNotNone(x.id)
+        self.assertEqual((yield self.db[u.TEST_COLLECTION2].count()), 3)
+
+        res = yield self.db[u.TEST_COLLECTION2].find_one({'_id': {'$nin': [u.col2_id1, u.col2_id2]}})
+        self.assertIsNotNone(res.pop('_id'))
+        self.assertDictEqual(res, {
+            'f1': [None, 'foo'],
+            'f2': {'a': 123, 'b': None},
+            'm1': {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}},
+            'm2': [],
+            'd2': [],
+            'd1': None
+        })
+
+    @gen_test
     def test_load_1(self):
         d = yield u.Document2.find_one(u.col2_id1)
         self.assertDictEqual(d['d1'].value, {'x2': [], 'x3': [None, None], 'x1': None, 'x4': {'a': None, 'b': None}})
