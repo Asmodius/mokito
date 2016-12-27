@@ -24,15 +24,16 @@ class Model(object):
     __metaclass__ = ModelMeta
     fields = {}
 
-    def __str__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self._data.value)
-
     def __init__(self, data=None, **kwargs):
         from fields import Field
         # self._data = copy.deepcopy(Field.make(self.fields))
         self._data = Field.make(self.fields)
         if data:
+            assert isinstance(data, dict)
             self._data.set(data, **kwargs)
+
+    def __str__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self._data.value)
 
     def __getitem__(self, key):
         return self._data.__getitem__(key)

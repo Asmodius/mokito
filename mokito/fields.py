@@ -296,6 +296,12 @@ class ArrayField(CollectionField):
                     self._del_docs.add(k1)
                     self._add_docs.discard(k1)
                     del self._val[k1]
+                elif isinstance(value, Document):
+                    self._del_docs.discard(k1)
+                    self._add_docs.add(k1)
+                    self._val[k1] = value
+                    if x.id != value.id:
+                        self._dirty = True
                 else:
                     self._del_docs.discard(k1)
                     self._add_docs.add(k1)

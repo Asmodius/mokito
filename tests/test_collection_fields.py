@@ -649,3 +649,14 @@ class TestCollectionFields(unittest.TestCase):
                 'dd3': [None, None]
             }
         }})
+
+    def test_field_query_8(self):
+        f = Field.make([str])
+        f.set(['foo', 'bar'])
+        f.dirty_clear()
+        f.set(['foo', 'bar'])
+        self.assertFalse(f.dirty)
+        self.assertEqual(f.query, {})
+        f.set(['foo', 'bar1'])
+        self.assertTrue(f.dirty)
+        self.assertDictEqual(f.query, {'$set': ['foo', 'bar1']})
