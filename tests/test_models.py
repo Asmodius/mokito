@@ -1064,7 +1064,7 @@ class TestModels(unittest.TestCase):
             _ = d.query
 
         self.assertDictEqual(d['d2'].value[0], {'x2': [dt2], 'x3': [300, 'z2'], 'x1': 55.0, 'x4': {'a': None, 'b': 400}})
-        self.assertIsNone(d['d2'].self_value[0])
+        self.assertEqual(d['d2'].self_value[0], DBRef(Document1.__collection__, id2))
 
     def test_model_choices(self):
         from mokito.fields import ChoiceField

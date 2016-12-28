@@ -18,8 +18,8 @@ class ORMTestCase(AsyncTestCase):
 
     @gen_test
     def _init_collection(self):
-        yield self.db[u.TEST_COLLECTION1].insert([u.col1_data1, u.col1_data2], safe=False)
-        yield self.db[u.TEST_COLLECTION2].insert([u.col2_data1, u.col2_data2], safe=False)
+        yield self.db[u.TEST_COLLECTION1].insert([u.col1_data1, u.col1_data2])
+        yield self.db[u.TEST_COLLECTION2].insert([u.col2_data1, u.col2_data2])
 
     def setUp(self):
         super(ORMTestCase, self).setUp()
@@ -344,3 +344,26 @@ class ORMTestCase(AsyncTestCase):
             'x3': [45601, 'z2'],
             'x4': {'a': 3, 'b': 4}
         })
+
+    @gen_test
+    def test_documents_1(self):
+        x1 = yield u.Document1.find()
+        self.assertEqual(len(x1), 2)
+        for i in x1:
+            self.assertIn(i._id, [u.col1_id1, u.col1_id2])
+
+        yield x1.remove()
+
+        x2 = yield u.Document1.find()
+        self.assertEqual(len(x2), 0)
+
+        yield x1.save()
+
+        x2 = yield u.Document1.find()
+        self.assertEqual(len(x2), 2)
+
+        d1 = [i.value for i in x1]
+        d1.sort()
+        d2 = [i.value for i in x2]
+        d2.sort()
+        self.assertListEqual(d1, d2)

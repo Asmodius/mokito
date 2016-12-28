@@ -24,8 +24,8 @@ class Documents(UserList):
         ret = self.data[int(k1)]
         return ret[k2] if k2 else ret
 
-    def __getattr__(self, item):
-        return [getattr(i, item) for i in self.data]
+    # def __getattr__(self, item):
+    #     return [getattr(i, item) for i in self.data]
 
     def __call__(self, method_name, *args, **kwargs):
         return [getattr(i, method_name)(*args, **kwargs) for i in self.data]
@@ -49,6 +49,10 @@ class Documents(UserList):
             yield cur.remove({"_id": {"$in": ids}}, safe)
             for i in self.data:
                 i._id = None
+
+    @coroutine
+    def save(self, safe=True):
+        yield [i.save(safe) for i in self.data]
 
     def filter(self, fn):
         return Documents(filter(fn, self.data))
@@ -81,7 +85,7 @@ class Document(Model):
 
     @property
     def self_value(self):
-        return None
+        return self.get_dbref() if self._id else None
 
     @property
     def id(self):
