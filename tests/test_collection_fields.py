@@ -6,6 +6,7 @@ import datetime
 from bson import ObjectId
 
 from mokito.fields import (
+    make_field,
     Field,
     IntField,
     FloatField,
@@ -22,47 +23,47 @@ from mokito.fields import (
 
 class TestCollectionFields(unittest.TestCase):
     def test_list_field_1(self):
-        f = Field.make([None])
+        f = make_field([None])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, Field)
 
-        f = Field.make([int])
+        f = make_field([int])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, IntField)
 
-        f = Field.make([IntField])
+        f = make_field([IntField])
         self.assertIsInstance(f._rules, IntField)
 
-        f = Field.make([float])
+        f = make_field([float])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, FloatField)
 
-        f = Field.make([str])
+        f = make_field([str])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, StringField)
 
-        f = Field.make([bool])
+        f = make_field([bool])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, BooleanField)
 
-        f = Field.make([datetime.datetime])
+        f = make_field([datetime.datetime])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, DateTimeField)
 
-        f = Field.make([ObjectId])
+        f = make_field([ObjectId])
         self.assertIsInstance(f, ListField)
         self.assertIsInstance(f._rules, ObjectIdField)
 
     def test_list_field_2(self):
         data = [str]
-        f = Field.make(data)
+        f = make_field(data)
 
         for i in [0, '0', '0.0', 'a']:
             with self.assertRaises(IndexError):
                 _ = f[i]
 
     def test_list_field_3(self):
-        f = Field.make([str])
+        f = make_field([str])
         self.assertEqual(f.value, [])
         self.assertEqual(f.self_value, [])
         self.assertEqual(f.get(), [])
@@ -71,17 +72,20 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.value, [None, 'foo'])
         self.assertEqual(f.self_value, [None, 'foo'])
         self.assertEqual(f.get(), [None, 'foo'])
+        self.assertTrue(f == f[1]._parent)
 
         f.append('bar')
         self.assertEqual(f.value, [None, 'foo', 'bar'])
         self.assertEqual(f.self_value, [None, 'foo', 'bar'])
         self.assertEqual(f.get(), [None, 'foo', 'bar'])
+        self.assertTrue(f == f[2]._parent)
 
         f['3'] = 'x'
         self.assertEqual(f.value, [None, 'foo', 'bar', 'x'])
         self.assertEqual(f.self_value, [None, 'foo', 'bar', 'x'])
         self.assertEqual(f.get(), [None, 'foo', 'bar', 'x'])
         self.assertEqual(f.get(2, 1), ['bar', 'foo'])
+        self.assertTrue(f == f[3]._parent)
 
         self.assertIsNone(f.pop(0).get())
         self.assertEqual(f.value, ['foo', 'bar', 'x'])
@@ -107,6 +111,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.value, ['foo', None, 'zzz'])
         self.assertEqual(f.self_value, ['foo', None, 'zzz'])
         self.assertEqual(f.get(), ['foo', None, 'zzz'])
+        self.assertTrue(f == f[2]._parent)
 
         del f[0]
         self.assertEqual(f.value, [None, 'zzz'])
@@ -117,6 +122,8 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.value, ['foo', 'bar'])
         self.assertEqual(f.self_value, ['foo', 'bar'])
         self.assertEqual(f.get(), ['foo', 'bar'])
+        self.assertTrue(f == f[0]._parent)
+        self.assertTrue(f == f[1]._parent)
 
         f[1].set(None)
         self.assertEqual(f.value, ['foo', None])
@@ -124,12 +131,13 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.get(), ['foo', None])
         self.assertEqual(f.get(0, 1), ['foo', None])
         self.assertEqual(f.get(1, 0), [None, 'foo'])
+        self.assertTrue(f == f[1]._parent)
 
     def test_list_field_4(self):
         dt1 = datetime.datetime.utcnow()
         dt2 = datetime.datetime(2016, 1, 2, 3, 4, 5)
 
-        f = Field.make([datetime.datetime])
+        f = make_field([datetime.datetime])
         self.assertEqual(f.value, [])
         self.assertEqual(f.self_value, [])
         self.assertEqual(f.get(), [])
@@ -144,27 +152,37 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.get(date_format='%d/%m/%y'),
                          [dt1.strftime('%d/%m/%y'), dt2.strftime('%d/%m/%y')])
         self.assertEqual(f.get(1, date_format='%d/%m/%y'), [dt2.strftime('%d/%m/%y')])
+        self.assertTrue(f == f[0]._parent)
+        self.assertTrue(f == f[1]._parent)
 
     def test_tuple_field_1(self):
         data = (None, int, IntField)
-        f = Field.make(data)
+        f = make_field(data)
         self.assertIsInstance(f, TupleField)
         self.assertIsInstance(f._val['0'], Field)
+        self.assertTrue(f == f._val['0']._parent)
         self.assertIsInstance(f._val['1'], IntField)
+        self.assertTrue(f == f._val['1']._parent)
         self.assertIsInstance(f._val['2'], IntField)
+        self.assertTrue(f == f._val['2']._parent)
 
         data = (float, str, bool, ObjectId, datetime.datetime)
-        f = Field.make(data)
+        f = make_field(data)
         self.assertIsInstance(f, TupleField)
         self.assertIsInstance(f._val['0'], FloatField)
+        self.assertTrue(f == f._val['0']._parent)
         self.assertIsInstance(f._val['1'], StringField)
+        self.assertTrue(f == f._val['1']._parent)
         self.assertIsInstance(f._val['2'], BooleanField)
+        self.assertTrue(f == f._val['2']._parent)
         self.assertIsInstance(f._val['3'], ObjectIdField)
+        self.assertTrue(f == f._val['3']._parent)
         self.assertIsInstance(f._val['4'], DateTimeField)
+        self.assertTrue(f == f._val['4']._parent)
 
     def test_tuple_field_2(self):
         data = (str, int)
-        f = Field.make(data)
+        f = make_field(data)
 
         for i in [0, '0']:
             self.assertIsNone(f[i].value)
@@ -180,7 +198,7 @@ class TestCollectionFields(unittest.TestCase):
             _ = f[2]
 
     def test_field_set_2(self):
-        f = Field.make((datetime.datetime, str))
+        f = make_field((datetime.datetime, str))
 
         self.assertEqual(f.value, [None, None])
         self.assertEqual(f.self_value, [None, None])
@@ -191,6 +209,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.value, [None, '123'])
         self.assertEqual(f.self_value, [None, '123'])
         self.assertEqual(f.get(), [None, '123'])
+        self.assertTrue(f == f[1]._parent)
 
         dt1 = datetime.datetime(2016, 1, 2, 3, 4, 5)
         f[0] = dt1
@@ -198,6 +217,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.self_value, [dt1, '123'])
         self.assertEqual(f.get(), [dt1, '123'])
         self.assertEqual(f.get(date_format='iso'), ['2016-01-02T03:04:05', '123'])
+        self.assertTrue(f == f[0]._parent)
 
         with self.assertRaises(IndexError):
             f[2] = 'x'
@@ -206,17 +226,21 @@ class TestCollectionFields(unittest.TestCase):
         self.assertEqual(f.value, [dt1, None])
         self.assertEqual(f.self_value, [dt1, None])
         self.assertEqual(f.get(), [dt1, None])
+        self.assertTrue(f == f[1]._parent)
 
         del f[0]
         self.assertEqual(f.value, [None, None])
         self.assertEqual(f.self_value, [None, None])
         self.assertEqual(f.get(), [None, None])
+        self.assertTrue(f == f[0]._parent)
 
         f.set([dt1, 456])
         self.assertEqual(f.value, [dt1, '456'])
         self.assertEqual(f.self_value, [dt1, '456'])
         self.assertEqual(f.get(), [dt1, '456'])
         self.assertEqual(f.get(date_format='%d/%m/%y'), [dt1.strftime('%d/%m/%y'), '456'])
+        self.assertTrue(f == f[0]._parent)
+        self.assertTrue(f == f[1]._parent)
 
     def test_dict_field_1(self):
         data = {
@@ -230,18 +254,26 @@ class TestCollectionFields(unittest.TestCase):
             'f7': datetime.datetime,
             'f8': ObjectId
         }
-        f = Field.make(data)
+        f = make_field(data)
         self.assertIsInstance(f, DictField)
         self.assertIsInstance(f._val['f0'], Field)
-        self.assertIsInstance(f._val['f0'], Field)
+        self.assertTrue(f == f._val['f0']._parent)
         self.assertIsInstance(f._val['f1'], IntField)
+        self.assertTrue(f == f._val['f1']._parent)
         self.assertIsInstance(f._val['f2'], IntField)
+        self.assertTrue(f == f._val['f2']._parent)
         self.assertIsInstance(f._val['f3'], IntField)
+        self.assertTrue(f == f._val['f3']._parent)
         self.assertIsInstance(f._val['f4'], FloatField)
+        self.assertTrue(f == f._val['f4']._parent)
         self.assertIsInstance(f._val['f5'], StringField)
+        self.assertTrue(f == f._val['f5']._parent)
         self.assertIsInstance(f._val['f6'], BooleanField)
+        self.assertTrue(f == f._val['f6']._parent)
         self.assertIsInstance(f._val['f7'], DateTimeField)
+        self.assertTrue(f == f._val['f7']._parent)
         self.assertIsInstance(f._val['f8'], ObjectIdField)
+        self.assertTrue(f == f._val['f8']._parent)
 
     def test_dict_field_2(self):
         dt1 = datetime.datetime(2016, 1, 2, 3, 4, 5)
@@ -256,7 +288,7 @@ class TestCollectionFields(unittest.TestCase):
             'l': [{'l1': int, 'l2': str}],
             't': (int, {'t1': datetime.datetime, 't2': str}),
         }
-        f = Field.make(data)
+        f = make_field(data)
         self.assertIsInstance(f, DictField)
         self.assertDictEqual(f.value, {
             'd': {'d1': None, 'd2': [], 'd3': [None, None]},
@@ -276,6 +308,16 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.get('d'), {
             'd': {'d1': None, 'd2': [], 'd3': [None, None]},
         })
+        self.assertTrue(f == f['d']._parent)
+        self.assertTrue(f == f['d']['d1']._parent._parent)
+        self.assertTrue(f == f['d']['d2']._parent._parent)
+        self.assertTrue(f == f['d']['d3']._parent._parent)
+        self.assertTrue(f == f['d']['d3'][0]._parent._parent._parent)
+        self.assertTrue(f == f['d']['d3'][1]._parent._parent._parent)
+        self.assertTrue(f == f['l']._parent)
+        self.assertTrue(f == f['t']._parent)
+        self.assertTrue(f == f['t'][0]._parent._parent)
+        self.assertTrue(f == f['t'][1]._parent._parent)
 
         self.assertIsInstance(f._val['d'], DictField)
         self.assertIsInstance(f['d'], DictField)
@@ -307,8 +349,23 @@ class TestCollectionFields(unittest.TestCase):
                 'd3': (id1, 'bar')
             },
             'l': [{'l1': 456, 'l2': 'baz'}],
-            't': (789, {'t1': dt2, 't2': 'x'}),
+            't': (789, {'t1': dt2, 't2': 'x'})
         })
+        self.assertTrue(f == f['d']._parent)
+        self.assertTrue(f == f['d']['d1']._parent._parent)
+        self.assertTrue(f == f['d']['d2']._parent._parent)
+        self.assertTrue(f == f['d']['d3']._parent._parent)
+        self.assertTrue(f == f['d']['d3'][0]._parent._parent._parent)
+        self.assertTrue(f == f['d']['d3'][1]._parent._parent._parent)
+        self.assertTrue(f == f['l']._parent)
+        self.assertTrue(f == f['l'][0]._parent._parent)
+        self.assertTrue(f == f['l'][0]['l1']._parent._parent._parent)
+        self.assertTrue(f == f['l'][0]['l2']._parent._parent._parent)
+        self.assertTrue(f == f['t']._parent)
+        self.assertTrue(f == f['t'][0]._parent._parent)
+        self.assertTrue(f == f['t'][1]._parent._parent)
+        self.assertTrue(f == f['t'][1]['t1']._parent._parent._parent)
+        self.assertTrue(f == f['t'][1]['t2']._parent._parent._parent)
         self.assertDictEqual(f.value, {
             'd': {
                 'd1': dt1,
@@ -410,8 +467,7 @@ class TestCollectionFields(unittest.TestCase):
             'l': [{'l1': int, 'l2': str}],
             't': (int, {'t1': datetime.datetime, 't2': str}),
         }
-        f = Field.make(data)
-
+        f = make_field(data)
         f.set({
             'd': {
                 'd1': dt1,
@@ -511,7 +567,7 @@ class TestCollectionFields(unittest.TestCase):
             'l': [ChoiceField(ch2)],
             't': (int, ChoiceField(ch2)),
         }
-        f = Field.make(data)
+        f = make_field(data)
         f['s'] = 'a'
         f['l'].append(1)
         f['t'] = [123, 2]
@@ -521,8 +577,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.get(), {'s': 'a', 'l': [1], 't': [123, 2]})
 
     def test_field_query_1(self):
-        f = Field.make([str])
-
+        f = make_field([str])
         self.assertDictEqual(f.query, {})
         f.append('foo')
         self.assertDictEqual(f.query, {'$set': ['foo']})
@@ -536,7 +591,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.query, {'$set': ['bar', 'x']})
 
     def test_field_query_2(self):
-        f = Field.make([{'a': int, 'b': str}])
+        f = make_field([{'a': int, 'b': str}])
         self.assertDictEqual(f.query, {})
         f.append({'a': 1})
         self.assertDictEqual(f.query, {'$set': [{'a': 1, 'b': None}]})
@@ -546,7 +601,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.query, {'$set': [{'a': 123, 'b': 'foo'}, {'a': None, 'b': 'foo'}]})
 
     def test_field_query_3(self):
-        f = Field.make([{}])
+        f = make_field([{}])
         self.assertDictEqual(f.query, {})
         f.append({'a': 1})
         self.assertDictEqual(f.query, {'$set': [{'a': 1}]})
@@ -556,7 +611,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.query, {'$set': [{'a': 123, 'b': 'foo'}, {'b': 'foo'}]})
 
     def test_field_query_4(self):
-        f = Field.make((int, str))
+        f = make_field((int, str))
         self.assertDictEqual(f.query, {})
         f[1] = 'x'
         self.assertDictEqual(f.query, {'$set': [None, 'x']})
@@ -574,7 +629,7 @@ class TestCollectionFields(unittest.TestCase):
         self.assertDictEqual(f.query, {'$set': [123, 'foo']})
 
     def test_field_query_5(self):
-        f = Field.make((int, {'a': int}))
+        f = make_field((int, {'a': int}))
         self.assertDictEqual(f.query, {})
         f['1.a'] = 123
         self.assertDictEqual(f.query, {'$set': [None, {'a': 123}]})
@@ -593,7 +648,7 @@ class TestCollectionFields(unittest.TestCase):
             },
             'd5': {}
         }
-        f = Field.make(data)
+        f = make_field(data)
         self.assertDictEqual(f.query, {})
         f['d1'] = 123
         self.assertDictEqual(f.query, {'$set': {'d1': 123}})
@@ -704,7 +759,7 @@ class TestCollectionFields(unittest.TestCase):
         }})
 
     def test_field_query_7(self):
-        f = Field.make({})
+        f = make_field({})
         self.assertDictEqual(f.query, {})
         f.set({
             'd1': 456,
@@ -728,7 +783,7 @@ class TestCollectionFields(unittest.TestCase):
         }})
 
     def test_field_query_8(self):
-        f = Field.make([str])
+        f = make_field([str])
         f.set(['foo', 'bar'])
         f.dirty_clear()
         f.set(['foo', 'bar'])

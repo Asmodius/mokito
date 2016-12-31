@@ -10,7 +10,7 @@ except ImportError:
     import json
 
 import pytz
-from bson import ObjectId, DBRef
+from bson import ObjectId
 from dateutil.parser import parse
 
 from errors import MokitoDBREFError, MokitoChoiceError
@@ -19,8 +19,47 @@ from model import Model
 from tools import SEPARATOR
 
 
+def make_field(rules=None, _parent=None):
+    if rules is None:
+        return Field(_parent=_parent)
+    elif isinstance(rules, Field):
+        x = copy.deepcopy(rules)
+        x._parent = _parent
+        return x
+    else:
+        _type = rules if inspect.isclass(rules) else type(rules)
+        if _type is int:
+            return IntField(_parent=_parent)
+        if _type is float:
+            return FloatField(_parent=_parent)
+        if _type is str:
+            return StringField(_parent=_parent)
+        if _type is unicode:
+            return StringField(_parent=_parent)
+        if _type is bool:
+            return BooleanField(_parent=_parent)
+        if _type is ObjectId:
+            return ObjectIdField(_parent=_parent)
+        if _type is datetime.datetime:
+            return DateTimeField(_parent=_parent)
+        if _type is list:
+            return ListField(rules, _parent=_parent)
+        if _type is tuple:
+            return TupleField(rules, _parent=_parent)
+        if _type is dict:
+            return DictField(rules, _parent=_parent)
+        if issubclass(_type, Model):
+            return _type(_parent=_parent)
+        if issubclass(_type, Field):
+            x = _type(rules)
+            x._parent = _parent
+            return x
+        raise TypeError()
+
+
 class Field(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, _parent=None, **kwargs):
+        self._parent = _parent
         self._val = None
         self._dirty = False
 
@@ -50,40 +89,6 @@ class Field(object):
     @property
     def self_value(self):
         return self._val
-
-    @classmethod
-    def make(cls, rules=None):
-        if rules is None:
-            return Field()
-        elif isinstance(rules, Field):
-            return copy.deepcopy(rules)
-        else:
-            _type = rules if inspect.isclass(rules) else type(rules)
-            if _type is int:
-                return IntField()
-            if _type is float:
-                return FloatField()
-            if _type is str:
-                return StringField()
-            if _type is unicode:
-                return StringField()
-            if _type is bool:
-                return BooleanField()
-            if _type is ObjectId:
-                return ObjectIdField()
-            if _type is datetime.datetime:
-                return DateTimeField()
-            if _type is list:
-                return ListField(rules)
-            if _type is tuple:
-                return TupleField(rules)
-            if _type is dict:
-                return DictField(rules)
-            if issubclass(_type, Model):
-                return _type()
-            if issubclass(_type, Field):
-                return _type(rules)
-            raise TypeError()
 
     def clear(self):
         self._val = None
@@ -186,8 +191,8 @@ class ChoiceField(Field):
 
 
 class CollectionField(Field):
-    def __init__(self):
-        super(CollectionField, self).__init__()
+    def __init__(self, **kwargs):
+        super(CollectionField, self).__init__(**kwargs)
         self._add_docs = set()
         self._del_docs = set()
 
@@ -200,7 +205,7 @@ class CollectionField(Field):
         self.setitem(key, value)
 
     def setitem(self, key, value, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def set(self, value, **kwargs):
         if value is not None:
@@ -259,12 +264,9 @@ class ArrayField(CollectionField):
     @property
     def query(self):
         ret = {"$set": [], "$unset": {}}
-        # print 'QQ', self._add_docs, self._del_docs
         for k in range(len(self)):
             k = str(k)
             v = self._val.get(k)
-            # print 'FD1', k, v
-            # print 'FD2', self._val
             if k in self._add_docs:
                 if v._id is None or v.query:
                     raise MokitoDBREFError(v)
@@ -288,8 +290,6 @@ class ArrayField(CollectionField):
         if not ret["$unset"]:
             del ret["$unset"]
         return ret
-
-        # return {'$set': self.value} if self.dirty else {}
 
     def _set(self, k1, k2, value, **kwargs):
         try:
@@ -343,9 +343,9 @@ class ArrayField(CollectionField):
 
 
 class ListField(ArrayField):
-    def __init__(self, rules):
-        super(ListField, self).__init__()
-        self._rules = Field.make((rules+[None])[0])
+    def __init__(self, rules, **kwargs):
+        super(ListField, self).__init__(**kwargs)
+        self._rules = make_field((rules+[None])[0])
         self._val = {}
 
     def setitem(self, key, value, **kwargs):
@@ -353,7 +353,9 @@ class ListField(ArrayField):
         if not k1.isdigit():
             raise TypeError('%s is not integer' % k1)
         if k1 not in self._val:
-            self._val[k1] = copy.deepcopy(self._rules)
+            x = copy.deepcopy(self._rules)
+            x._parent = self
+            self._val[k1] = x
         self._set(k1, k2, value, **kwargs)
 
     def __delitem__(self, key):
@@ -399,14 +401,15 @@ class ListField(ArrayField):
                 del self._val[str(i)]
         if ret is None:
             ret = copy.deepcopy(self._rules)
+            ret._parent = self
             ret.set(default)
         return ret
 
 
 class TupleField(ArrayField):
-    def __init__(self, rules):
-        super(TupleField, self).__init__()
-        self._val = {str(k): Field.make(v) for k, v in enumerate(rules)}
+    def __init__(self, rules, **kwargs):
+        super(TupleField, self).__init__(**kwargs)
+        self._val = {str(k): make_field(v, _parent=self) for k, v in enumerate(rules)}
 
     def __delitem__(self, key):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -433,15 +436,15 @@ class TupleField(ArrayField):
 
 
 class DictField(CollectionField):
-    def __init__(self, rules):
-        super(DictField, self).__init__()
+    def __init__(self, rules, **kwargs):
+        super(DictField, self).__init__(**kwargs)
         self._rules = bool(rules)
-        self._val = {k: self.make(v) for k, v in rules.items()} if rules else {}
+        self._val = {k: make_field(v, _parent=self) for k, v in rules.items()} if rules else {}
 
     def setitem(self, key, value, **kwargs):
         k1, _, k2 = str(key).partition(SEPARATOR)
         if not self._rules:
-            self._val[k1] = Field.make(value)
+            self._val[k1] = make_field(value, _parent=self)
         self._set(k1, k2, value, **kwargs)
 
     def __delitem__(self, key):

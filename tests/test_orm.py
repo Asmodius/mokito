@@ -76,12 +76,12 @@ class ORMTestCase(AsyncTestCase):
 
         data = u.col1_data1.copy()
         data.pop('_id')
-        self.assertDictEqual(data, x[0]._data.value)
+        self.assertDictEqual(data, x[0]._val.value)
 
         data = u.col1_data2.copy()
         data.pop('_id')
         data.pop('foo')
-        self.assertDictEqual(data, x[1]._data.value)
+        self.assertDictEqual(data, x[1]._val.value)
 
     @gen_test
     def test_count(self):

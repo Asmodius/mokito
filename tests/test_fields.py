@@ -6,6 +6,7 @@ import datetime
 from bson import ObjectId
 
 from mokito.fields import (
+    make_field,
     Field,
     IntField,
     FloatField,
@@ -20,8 +21,8 @@ from mokito.errors import MokitoChoiceError
 
 class TestFields(unittest.TestCase):
 
-    def test_field_1(self):
-        f = Field.make()
+    def test_field(self):
+        f = make_field()
         self.assertIsInstance(f, Field)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -35,19 +36,8 @@ class TestFields(unittest.TestCase):
         self.assertEqual('foo', f.value)
         self.assertEqual('foo', f.self_value)
 
-    def test_field_2(self):
-        f = Field.make()
-        f.set(123)
-        self.assertEqual(123, f.get())
-        self.assertEqual(123, f.value)
-        self.assertEqual(123, f.self_value)
-        f.set('456')
-        self.assertEqual('456', f.get())
-        self.assertEqual('456', f.value)
-        self.assertEqual('456', f.self_value)
-
-    def test_int_field_1(self):
-        f = Field.make(int)
+    def test_int_field(self):
+        f = make_field(int)
         self.assertIsInstance(f, IntField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -61,19 +51,8 @@ class TestFields(unittest.TestCase):
         self.assertEqual(456, f.value)
         self.assertEqual(456, f.self_value)
 
-    def test_int_field_2(self):
-        f = Field.make(int)
-        f.set(123)
-        self.assertEqual(123, f.get())
-        self.assertEqual(123, f.value)
-        self.assertEqual(123, f.self_value)
-        f.set('456')
-        self.assertEqual(456, f.get())
-        self.assertEqual(456, f.value)
-        self.assertEqual(456, f.self_value)
-
-    def test_float_field_1(self):
-        f = Field.make(float)
+    def test_float_field(self):
+        f = make_field(float)
         self.assertIsInstance(f, FloatField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -87,19 +66,8 @@ class TestFields(unittest.TestCase):
         self.assertEqual(456.7, f.value)
         self.assertEqual(456.7, f.self_value)
 
-    def test_float_field_2(self):
-        f = Field.make(float)
-        f.set('123')
-        self.assertEqual(123.0, f.get())
-        self.assertEqual(123.0, f.value)
-        self.assertEqual(123.0, f.self_value)
-        f.set(456.7)
-        self.assertEqual(456.7, f.get())
-        self.assertEqual(456.7, f.value)
-        self.assertEqual(456.7, f.self_value)
-
-    def test_str_field_1(self):
-        f = Field.make(str)
+    def test_str_field(self):
+        f = make_field(str)
         self.assertIsInstance(f, StringField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -113,19 +81,8 @@ class TestFields(unittest.TestCase):
         self.assertEqual('456.7', f.value)
         self.assertEqual('456.7', f.self_value)
 
-    def test_str_field_2(self):
-        f = Field.make(str)
-        f.set('foo')
-        self.assertEqual('foo', f.get())
-        self.assertEqual('foo', f.value)
-        self.assertEqual('foo', f.self_value)
-        f.set('456.7')
-        self.assertEqual('456.7', f.get())
-        self.assertEqual('456.7', f.value)
-        self.assertEqual('456.7', f.self_value)
-
-    def test_bool_field_1(self):
-        f = Field.make(bool)
+    def test_bool_field(self):
+        f = make_field(bool)
         self.assertIsInstance(f, BooleanField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -134,6 +91,10 @@ class TestFields(unittest.TestCase):
         self.assertTrue(f.get())
         self.assertTrue(f.value)
         self.assertTrue(f.self_value)
+        f.set(None)
+        self.assertFalse(f.get())
+        self.assertFalse(f.value)
+        self.assertFalse(f.self_value)
         f.set(True)
         self.assertTrue(f.get())
         self.assertTrue(f.value)
@@ -143,21 +104,10 @@ class TestFields(unittest.TestCase):
         self.assertFalse(f.value)
         self.assertFalse(f.self_value)
 
-    def test_bool_field_2(self):
-        f = Field.make(bool)
-        f.set(True)
-        self.assertTrue(f.get())
-        self.assertTrue(f.value)
-        self.assertTrue(f.self_value)
-        f.set(None)
-        self.assertFalse(f.get())
-        self.assertFalse(f.value)
-        self.assertFalse(f.self_value)
-
-    def test_ObjectId_field_1(self):
+    def test_ObjectId_field(self):
         id1 = ObjectId()
         id2 = ObjectId()
-        f = Field.make(ObjectId)
+        f = make_field(ObjectId)
         self.assertIsInstance(f, ObjectIdField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -174,10 +124,10 @@ class TestFields(unittest.TestCase):
         self.assertEqual(id2, f.self_value)
         self.assertEqual(str(id2), f.get(as_json=True))
 
-    def test_datetime_field_1(self):
+    def test_datetime_field(self):
         dt1 = datetime.datetime.now()
         dt2 = datetime.datetime.utcnow()
-        f = Field.make(datetime.datetime)
+        f = make_field(datetime.datetime)
         self.assertIsInstance(f, DateTimeField)
         self.assertIsNone(f.get())
         self.assertIsNone(f.value)
@@ -199,10 +149,10 @@ class TestFields(unittest.TestCase):
         self.assertEqual(datetime.datetime(2016, 12, 14), f.value)
         self.assertEqual(datetime.datetime(2016, 12, 14), f.self_value)
 
-    def test_choice_field_1(self):
+    def test_choice_field(self):
         ch = {'a': 1, 'b': 2}
         x = ChoiceField(ch)
-        f = Field.make(x)
+        f = make_field(x)
         self.assertDictEqual(x.choices, f.choices)
 
         f.set(1)

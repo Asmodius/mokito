@@ -24,9 +24,6 @@ class Documents(UserList):
         ret = self.data[int(k1)]
         return ret[k2] if k2 else ret
 
-    # def __getattr__(self, item):
-    #     return [getattr(i, item) for i in self.data]
-
     def __call__(self, method_name, *args, **kwargs):
         return [getattr(i, method_name)(*args, **kwargs) for i in self.data]
 
@@ -36,10 +33,6 @@ class Documents(UserList):
     @coroutine
     def reread(self, *fields):
         yield [i.reread(*fields) for i in self.data]
-
-    # @property
-    # def value(self):
-    #     return [i.value for i in self.data]
 
     @coroutine
     def remove(self, safe=True):
@@ -101,16 +94,9 @@ class Document(Model):
 
     dbref = property(get_dbref, set_dbref)
 
-    @property
-    def dirty(self):
-        return self._data.dirty
-
-    def dirty_clear(self):
-        self._data.dirty_clear()
-
     def clear(self):
+        super(Document, self).clear()
         self._id = None
-        self._data.clear()
 
     def set(self, value, **kwargs):
         if isinstance(value, DBRef):
@@ -120,7 +106,7 @@ class Document(Model):
             _id = value.pop('_id', None)
             if _id is not None:
                 self._id = ObjectId(_id)
-            self._data.set(value, **kwargs)
+            self._val.set(value, **kwargs)
 
     @classmethod
     def get_cursor(cls, database=None, collection=None):
@@ -136,7 +122,7 @@ class Document(Model):
         Read the object again.
         """
         if fields:
-            yield [self._data[i].reread() for i in fields]
+            yield [self._val[i].reread() for i in fields]
 
         else:
             cur = self.get_cursor()
@@ -144,7 +130,7 @@ class Document(Model):
             if data:
                 self.clear()
                 self.set(data, inner=True)
-                self._data.dirty_clear()
+                self._val.dirty_clear()
                 self.loaded = True
                 raise Return(True)
 
@@ -175,7 +161,7 @@ class Document(Model):
         data = yield cur.find_one(spec_or_id, fields=fields)
         if data:
             self = cls(data, inner=True)
-            self._data.dirty_clear()
+            self._val.dirty_clear()
             self.loaded = True
             raise Return(self)
 
@@ -214,14 +200,14 @@ class Document(Model):
     def save(self, safe=True):
         if self._id is None:
             cur = self.get_cursor()
-            self._id = yield cur.insert(self._data.self_value, safe=safe)
+            self._id = yield cur.insert(self._val.self_value, safe=safe)
             self.dirty_clear()
             if safe:
                 raise Return(True)
 
         elif self.dirty:
             cur = self.get_cursor()
-            res = yield cur.update(self._id, self._data.query, safe=safe)
+            res = yield cur.update(self._id, self._val.query, safe=safe)
             if res:
                 self.dirty_clear()
                 if safe:

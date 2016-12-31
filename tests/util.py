@@ -130,7 +130,7 @@ class Document1(Document0):
 
     @property
     def prop2(self):
-        return self._data['x1'].value * 2
+        return self._val['x1'].value * 2
 
 
 class Model2(mokito.Model):
