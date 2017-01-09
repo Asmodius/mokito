@@ -8,4 +8,4 @@ import errors
 
 __all__ = ["Client", "Document", "Model", "ModelManager", "errors", "Choice"]
 
-version = "0.2.8"
+version = "0.2.9"

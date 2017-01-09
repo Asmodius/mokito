@@ -15,7 +15,6 @@ from dateutil.parser import parse
 
 from errors import MokitoDBREFError, MokitoChoiceError
 from tools import SEPARATOR
-from manage import ModelManager
 
 
 def make_field(rules=None, _parent=None):
@@ -65,6 +64,10 @@ class Field(object):
 
     def __str__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.value)
+
+    @property
+    def parent(self):
+        return self._parent
 
     @property
     def dirty(self):

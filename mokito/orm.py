@@ -156,7 +156,7 @@ class Document(Model):
         Read the object again.
         """
         if fields:
-            yield [self._val[i].reread() for i in fields]
+            yield [self[i].reread() for i in fields]
 
         else:
             cur = self.get_cursor()
