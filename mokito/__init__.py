@@ -1,8 +1,7 @@
 # coding: utf-8
 
 from .client import Client
-from .orm import Document
-from .model import Model
+from .orm import Model, Document
 from .manage import ModelManager
 from .fields import ChoiceField as Choice
 import errors

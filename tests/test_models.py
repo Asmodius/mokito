@@ -26,15 +26,15 @@ class TestModels(unittest.TestCase):
         self.assertEqual(f['d1'].get(), None)
         self.assertEqual(f['d1'].value, None)
         self.assertEqual(f['d1'].self_value, None)
-        self.assertTrue(f == f['d1']._parent._parent)
+        self.assertTrue(f == f['d1']._parent)
         self.assertEqual(f['d2'].get(), [])
         self.assertEqual(f['d2'].value, [])
         self.assertEqual(f['d2'].self_value, [])
-        self.assertTrue(f == f['d2']._parent._parent)
+        self.assertTrue(f == f['d2']._parent)
         self.assertEqual(f['d3'].get(), [None, None])
         self.assertEqual(f['d3'].value, [None, None])
         self.assertEqual(f['d3'].self_value, [None, None])
-        self.assertTrue(f == f['d3']._parent._parent)
+        self.assertTrue(f == f['d3']._parent)
         self.assertDictEqual(f['d4'].get(), {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertDictEqual(f['d4'].value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
         self.assertDictEqual(f['d4'].self_value, {'dd1': None, 'dd2': [], 'dd3': [None, None]})
@@ -56,7 +56,7 @@ class TestModels(unittest.TestCase):
         self.assertEqual(f['d4']['dd3'].get(), [None, None])
         self.assertEqual(f['d4']['dd3'].value, [None, None])
         self.assertEqual(f['d4']['dd3'].self_value, [None, None])
-        self.assertTrue(f == f['d4']._parent._parent)
+        self.assertTrue(f == f['d4']._parent)
 
     def test_model_get_2(self):
         class SubModel0A(mokito.Model):
@@ -86,6 +86,7 @@ class TestModels(unittest.TestCase):
             fields = Model1A
 
         f = Model2A()
+
         self.assertEqual(f['m1.d1'].get(), None)
         self.assertEqual(f['m1.d1'].value, None)
         self.assertEqual(f['m1.d1'].self_value, None)

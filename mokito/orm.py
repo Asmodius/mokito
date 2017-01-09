@@ -6,13 +6,47 @@ from bson import DBRef, ObjectId
 from tornado.gen import coroutine, Return
 
 from manage import ModelManager
-from model import Model
+from fields import DictField
 from errors import MokitoORMError
 
 from tools import SEPARATOR
 
 DEFAULT_URI = "mongodb://127.0.0.1:27017"
 DEFAULT_CONNECTIONS = 10
+
+
+class ModelMeta(type):
+    def __new__(mcs, name, bases, attr):
+        fields = attr.get('fields')
+        if fields is not None and not isinstance(fields, dict):
+            attr['fields'] = getattr(fields, 'fields')
+
+        _cls = type.__new__(mcs, name, bases, attr)
+        if name != 'Model' and name != 'Document':
+            ModelManager.add(_cls)
+        return _cls
+
+
+class Model(DictField):
+    __metaclass__ = ModelMeta
+    fields = {}
+
+    def __init__(self, data=None, **kwargs):
+        super(Model, self).__init__(self.fields)
+        if data:
+            self.set(data, **kwargs)
+
+    def get(self, *fields, **kwargs):
+        data = {}
+        _fields = []
+        if fields:
+            for i in fields:
+                if hasattr(self, i):
+                    data[i] = getattr(self, i)
+                else:
+                    _fields.append(i)
+
+        return dict(super(Model, self).get(*_fields, **kwargs), **data)
 
 
 class Documents(UserList):
@@ -106,7 +140,7 @@ class Document(Model):
             _id = value.pop('_id', None)
             if _id is not None:
                 self._id = ObjectId(_id)
-            self._val.set(value, **kwargs)
+            super(Document, self).set(value, **kwargs)
 
     @classmethod
     def get_cursor(cls, database=None, collection=None):
@@ -130,7 +164,7 @@ class Document(Model):
             if data:
                 self.clear()
                 self.set(data, inner=True)
-                self._val.dirty_clear()
+                self.dirty_clear()
                 self.loaded = True
                 raise Return(True)
 
@@ -161,7 +195,7 @@ class Document(Model):
         data = yield cur.find_one(spec_or_id, fields=fields)
         if data:
             self = cls(data, inner=True)
-            self._val.dirty_clear()
+            self.dirty_clear()
             self.loaded = True
             raise Return(self)
 
@@ -200,14 +234,14 @@ class Document(Model):
     def save(self, safe=True):
         if self._id is None:
             cur = self.get_cursor()
-            self._id = yield cur.insert(self._val.self_value, safe=safe)
+            self._id = yield cur.insert(super(Document, self).self_value, safe=safe)
             self.dirty_clear()
             if safe:
                 raise Return(True)
 
         elif self.dirty:
             cur = self.get_cursor()
-            res = yield cur.update(self._id, self._val.query, safe=safe)
+            res = yield cur.update(self._id, self.query, safe=safe)
             if res:
                 self.dirty_clear()
                 if safe:

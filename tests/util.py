@@ -18,6 +18,16 @@ dt3 = datetime.datetime(2016, 3, 4, 5, 6, 7)
 dt4 = datetime.datetime(2016, 4, 5, 6, 7, 8)
 dt5 = datetime.datetime(2016, 5, 6, 7, 8, 9)
 dt6 = datetime.datetime(2016, 6, 7, 8, 9, 10)
+dt7 = datetime.datetime(2016, 7, 8, 9, 10, 11)
+dt8 = datetime.datetime(2016, 8, 9, 10, 11, 12)
+dt9 = datetime.datetime(2016, 9, 10, 11, 12, 13)
+dt10 = datetime.datetime(2016, 10, 11, 12, 13, 14)
+dt11 = datetime.datetime(2016, 11, 12, 13, 14, 15)
+dt12 = datetime.datetime(2016, 12, 13, 14, 15, 16)
+xt1 = datetime.datetime(2015, 1, 2, 3, 4, 5)
+xt2 = datetime.datetime(2015, 2, 3, 4, 5, 6)
+xt3 = datetime.datetime(2015, 3, 4, 5, 6, 7)
+
 
 col1_id1 = ObjectId()
 col1_dbref1 = DBRef(TEST_COLLECTION1, col1_id1)
@@ -48,19 +58,18 @@ col2_data1 = {
     'f2': {'a': 5, 'b': 6},
     'm1': {
         'x1': .1,
-        'x2': [datetime.datetime(2016, 7, 8, 9, 10, 11),
-               datetime.datetime(2016, 8, 9, 10, 11, 12)],
+        'x2': [dt7, dt8],
         'x3': [7, 'z3'],
         'x4': {'a': 8, 'b': 8}
     },
     'm2': [{
             'x1': .2,
-            'x2': [datetime.datetime(2016, 9, 10, 11, 12, 13)],
+            'x2': [dt9],
             'x3': [8, 'z1'],
             'x4': {'a': 9, 'b': 9}
         }, {
             'x1': .3,
-            'x2': [datetime.datetime(2016, 10, 11, 12, 13, 14)],
+            'x2': [dt10],
             'x3': [9, 'z2'],
             'x4': {'a': 10, 'b': 10}
     }],
@@ -76,20 +85,18 @@ col2_data2 = {
     'f2': {'a': 11, 'b': 12},
     'm1': {
         'x1': .2,
-        'x2': [datetime.datetime(2016, 11, 12, 13, 14, 15),
-               datetime.datetime(2016, 12, 13, 14, 15, 16)],
+        'x2': [dt11, dt12],
         'x3': [7, 'z3'],
         'x4': {'a': 8, 'b': 8}
     },
     'm2': [{
             'x1': .2,
-            'x2': [datetime.datetime(2015, 1, 2, 3, 4, 5)],
+            'x2': [xt1],
             'x3': [8, 'z1'],
             'x4': {'a': 9, 'b': 9}
         }, {
             'x1': .3,
-            'x2': [datetime.datetime(2015, 2, 3, 4, 5, 6),
-                   datetime.datetime(2015, 3, 4, 5, 6, 7)],
+            'x2': [xt2, xt3],
             'x3': [9, 'z2'],
             'x4': {'a': 10, 'b': 10}
     }],
@@ -110,7 +117,6 @@ class Model0(mokito.Model):
     fields = {
         'x1': float,
         'x2': [datetime.datetime],
-        # 'x3': (int, str),
         'x3': (int, mokito.Choice(ch1)),
         'x4': {'a': int, 'b': int}
     }

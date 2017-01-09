@@ -14,12 +14,12 @@ from bson import ObjectId
 from dateutil.parser import parse
 
 from errors import MokitoDBREFError, MokitoChoiceError
-from orm import Document
-from model import Model
 from tools import SEPARATOR
+from manage import ModelManager
 
 
 def make_field(rules=None, _parent=None):
+    from orm import Model
     if rules is None:
         return Field(_parent=_parent)
     elif isinstance(rules, Field):
@@ -263,6 +263,7 @@ class ArrayField(CollectionField):
 
     @property
     def query(self):
+        from orm import Document
         ret = {"$set": [], "$unset": {}}
         for k in range(len(self)):
             k = str(k)
@@ -292,6 +293,7 @@ class ArrayField(CollectionField):
         return ret
 
     def _set(self, k1, k2, value, **kwargs):
+        from orm import Document
         try:
             x = self._val[k1]
         except KeyError:
@@ -458,6 +460,7 @@ class DictField(CollectionField):
         self._dirty = True
 
     def _set(self, k1, k2, value, **kwargs):
+        from orm import Document
         x = self._val[k1]
         if k2:
             x.setitem(k2, value, **kwargs)
@@ -488,6 +491,9 @@ class DictField(CollectionField):
     def self_value(self):
         return {k: v.self_value for k, v in self._val.items()}
 
+    def items(self):
+        return self._val.items()
+
     def get(self, *fields, **kwargs):
         key_param, all_param = self._mk_param(**kwargs)
 
@@ -517,6 +523,7 @@ class DictField(CollectionField):
 
     @property
     def query(self):
+        from orm import Model, Document
         ret = {"$set": {}, "$unset": {}}
 
         if not self._rules:
@@ -533,7 +540,17 @@ class DictField(CollectionField):
                     ret["$unset"][k] = ''
 
                 elif v.dirty:
-                    if isinstance(v, ArrayField):
+                    if isinstance(v, Document):
+                        raise MokitoDBREFError(v)
+
+                    elif isinstance(v, Model):
+                        _q = v.query
+                        for j in ["$set", "$unset"]:
+                            if j in _q:
+                                for k1, v1 in _q[j].items():
+                                    ret[j]["%s.%s" % (k, k1)] = v1
+
+                    elif isinstance(v, ArrayField):
                         _q = v.query
                         for j in ["$set", "$unset"]:
                             if j in _q:
@@ -548,16 +565,6 @@ class DictField(CollectionField):
                                         ret[j]["%s.%s" % (k, k1)] = v1
                                 else:
                                     ret[j][k] = _q[j]
-
-                    elif isinstance(v, Document):
-                        raise MokitoDBREFError(v)
-
-                    elif isinstance(v, Model):
-                        _q = v.query
-                        for j in ["$set", "$unset"]:
-                            if j in _q:
-                                for k1, v1 in _q[j].items():
-                                    ret[j]["%s.%s" % (k, k1)] = v1
 
                     else:
                         ret['$set'][k] = v.value
