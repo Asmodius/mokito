@@ -158,7 +158,7 @@ class Document(Model):
         if fields:
             yield [self[i].reread() for i in fields]
 
-        else:
+        elif self._id:
             cur = self.get_cursor()
             data = yield cur.find_one(self._id, fields=self.fields.keys())
             if data:
