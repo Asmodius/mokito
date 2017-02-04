@@ -3,7 +3,6 @@
 import copy
 import inspect
 import datetime
-from collections import OrderedDict
 try:
     import ujson as json
 except ImportError:
@@ -17,38 +16,47 @@ from errors import MokitoDBREFError, MokitoChoiceError
 from tools import SEPARATOR
 
 
-def make_field(rules=None, _parent=None):
+def make_field(rules, _parent=None):
     from orm import Model
     if rules is None:
-        return Field(_parent=_parent)
+        return NoneField(_parent=_parent)
+
     elif isinstance(rules, Field):
         x = copy.deepcopy(rules)
         x._parent = _parent
         return x
+
     else:
-        _type = rules if inspect.isclass(rules) else type(rules)
+        if inspect.isclass(rules):
+            _type = rules
+            _val = None
+        else:
+            _type = type(rules)
+            _val = rules
+
         if _type is int:
-            return IntField(_parent=_parent)
+            return IntField(_default=_val, _parent=_parent)
         if _type is float:
-            return FloatField(_parent=_parent)
-        if _type is str:
-            return StringField(_parent=_parent)
-        if _type is unicode:
-            return StringField(_parent=_parent)
+            return FloatField(_default=_val, _parent=_parent)
+        if _type is str or _type is unicode:
+            return StringField(_default=_val, _parent=_parent)
         if _type is bool:
-            return BooleanField(_parent=_parent)
+            return BooleanField(_default=_val, _parent=_parent)
         if _type is ObjectId:
-            return ObjectIdField(_parent=_parent)
+            return ObjectIdField(_default=_val, _parent=_parent)
         if _type is datetime.datetime:
-            return DateTimeField(_parent=_parent)
+            return DateTimeField(_default=_val, _parent=_parent)
+
         if _type is list:
             return ListField(rules, _parent=_parent)
         if _type is tuple:
             return TupleField(rules, _parent=_parent)
         if _type is dict:
             return DictField(rules, _parent=_parent)
+
         if issubclass(_type, Model):
             return _type(_parent=_parent)
+
         if issubclass(_type, Field):
             x = _type(rules)
             x._parent = _parent
@@ -57,10 +65,14 @@ def make_field(rules=None, _parent=None):
 
 
 class Field(object):
-    def __init__(self, _parent=None, **kwargs):
-        self._parent = _parent
+
+    def __init__(self, _default=None, _parent=None, **kwargs):
         self._val = None
+        self._parent = _parent
         self._dirty = False
+        self._default = _default
+        if _default is not None:
+            self.set(_default)
 
     def __str__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.value)
@@ -76,7 +88,7 @@ class Field(object):
     def dirty_clear(self):
         self._dirty = False
 
-    def get(self, **kwargs):
+    def _value(self):
         return self._val
 
     def set(self, value, **kwargs):
@@ -85,36 +97,84 @@ class Field(object):
             self._val = value
             self._dirty = True
 
-    @property
-    def value(self):
-        return self._val
+    value = property(_value, set)
+
+    def get(self, **kwargs):
+        return self._value()
 
     @property
     def self_value(self):
         return self._val
 
     def clear(self):
-        self._val = None
+        self._val = self._default
         self._dirty = True
 
 
-class IntField(Field):
+class UndefinedField(Field):
+    def __getitem__(self, key):
+        raise IndexError(key)
+
+    def __setitem__(self, key, value):
+        raise IndexError(key)
+
+    def __delitem__(self, key):
+        raise IndexError(key)
+
+    def _value(self):
+        return
+
+    def set(self, value, **kwargs):
+        pass
+
+    value = property(_value, set)
+
+
+class NoneField(Field):
+    def __getitem__(self, key):
+        k1, _, k2 = str(key).partition(SEPARATOR)
+        try:
+            if isinstance(self._val, (list, tuple)):
+                k1 = int(k1)
+            ret = self._val[k1]
+        except KeyError:
+            ret = UndefinedField(_parent=self)
+        if k2:
+            ret = ret.__getitem__(k2)
+
+        return ret if isinstance(ret, Field) else NoneField(ret)
+
+    def set(self, value, **kwargs):
+        if isinstance(value, tuple):
+            value = list(value)
+        super(NoneField, self).set(value, **kwargs)
+
+    value = property(Field._value, set)
+
+
+class NumberField(Field):
     def __iadd__(self, other):
         if isinstance(other, Field):
             other = other.value
         return (self._val or 0) + other
 
+
+class IntField(NumberField):
     def set(self, value, **kwargs):
         if value is not None:
             value = int(value)
         super(IntField, self).set(value, **kwargs)
 
+    value = property(NumberField._value, set)
 
-class FloatField(Field):
+
+class FloatField(NumberField):
     def set(self, value, **kwargs):
         if value is not None:
             value = float(value)
         super(FloatField, self).set(value, **kwargs)
+
+    value = property(NumberField._value, set)
 
 
 class StringField(Field):
@@ -129,6 +189,8 @@ class StringField(Field):
                 value = str(value)
         super(StringField, self).set(value, **kwargs)
 
+    value = property(Field._value, set)
+
 
 class BooleanField(Field):
     def set(self, value, **kwargs):
@@ -136,23 +198,27 @@ class BooleanField(Field):
             value = bool(value)
         super(BooleanField, self).set(value, **kwargs)
 
+    value = property(Field._value, set)
+
 
 class ObjectIdField(Field):
-    def get(self, as_json=False, **kwargs):
+    def get(self, _format=None, **kwargs):
         if self._val is not None:
-            return str(self._val) if as_json else self._val
+            return str(self._val) if _format == 'json' else self._val
 
     def set(self, value, **kwargs):
         if value is not None:
             value = ObjectId(value)
         super(ObjectIdField, self).set(value, **kwargs)
 
+    value = property(Field._value, set)
+
 
 class DateTimeField(Field):
-    def get(self, date_format=None, tz_name=None, without_microsecond=True, tz=None, **kwargs):
-        if date_format is None and (tz_name or tz):
-            date_format = 'iso'
-        if self._val is None or date_format is None:
+    def get(self, _date_format=None, tz_name=None, without_microsecond=True, tz=None, **kwargs):
+        if _date_format is None and (tz_name or tz):
+            _date_format = 'iso'
+        if self._val is None or _date_format is None:
             return self._val
 
         _tz = pytz.timezone(tz_name) if tz_name else tz
@@ -160,49 +226,67 @@ class DateTimeField(Field):
         if without_microsecond:
             val = val.replace(microsecond=0)
 
-        return val.isoformat() if date_format.lower() == 'iso' else val.strftime(date_format)
+        return val.isoformat() if _date_format.lower() == 'iso' else val.strftime(_date_format)
 
-    def set(self, value, date_format=None, **kwargs):
+    def set(self, value, _date_format=None, **kwargs):
         if not (value is None or isinstance(value, datetime.datetime)):
-            if date_format and date_format != 'iso':
-                value = datetime.datetime.strptime(value, date_format)
+            if _date_format and _date_format != 'iso':
+                value = datetime.datetime.strptime(value, _date_format)
             else:
                 value = parse(value).replace(tzinfo=None)
         super(DateTimeField, self).set(value, **kwargs)
 
+    value = property(Field._value, set)
+
 
 class ChoiceField(Field):
     def __init__(self, choices, **kwargs):
+        """
+        :param choices: {mongo_value: orm_value} or [mongo_value] or (mongo_value,)
+        :param kwargs:
+        """
         super(ChoiceField, self).__init__(**kwargs)
-        if isinstance(choices, (list, type)):
-            choices = {i: i for i in choices}
-        self.choices = choices
+        if isinstance(choices, dict):
+            self._choices = choices
+        elif isinstance(choices, (list, tuple)):
+            self._choices = {i: i for i in choices}
+        else:
+            raise TypeError()
 
-    def get(self, **kwargs):
-        return self.choices.get(self._val, None)
+    def _orm_2_mongo(self, value):
+        for k, v in self._choices.items():
+            if value == v:
+                return k
+
+        if value is not None:
+            raise MokitoChoiceError(value)
+
+    def get(self, inner=False, **kwargs):
+        return self._val if inner else self._choices.get(self._val, None)
+
+    def _value(self):
+        return self._choices.get(self._val, None)
 
     def set(self, value, inner=False, **kwargs):
         if not inner:
-            if value is not None:
-                for k, v in self.choices.items():
-                    if v == value:
-                        value = k
-                        break
-                else:
-                    raise MokitoChoiceError(value)
+            value = self._orm_2_mongo(value)
         super(ChoiceField, self).set(value, **kwargs)
+
+    value = property(_value, set)
 
 
 class CollectionField(Field):
-    def __init__(self, **kwargs):
-        super(CollectionField, self).__init__(**kwargs)
-        self._add_docs = set()
-        self._del_docs = set()
+
+    def __init__(self, _parent=None, **kwargs):
+        super(CollectionField, self).__init__(_parent=_parent, **kwargs)
+        self._add_docs = set()  # added Document()
+        self._del_docs = set()  # deleted Document()
 
     def __getitem__(self, key):
-        k1, _, k2 = str(key).partition(SEPARATOR)
-        ret = self._val[k1]
-        return ret[k2] if k2 else ret
+        raise NotImplementedError
+
+    def __delitem__(self, key):
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
         self.setitem(key, value)
@@ -211,10 +295,15 @@ class CollectionField(Field):
         raise NotImplementedError
 
     def set(self, value, **kwargs):
-        if value is not None:
-            key_param, all_param = self._mk_param(**kwargs)
+        if value is None:
+            self.clear()
+
+        elif isinstance(value, dict):
             for k, v in value.items():
-                self.setitem(k, v, **dict(key_param.get(k, {}), **all_param))
+                self.setitem(k, v, **kwargs)
+
+        else:
+            raise TypeError()
 
     def dirty_clear(self):
         self._dirty = False
@@ -222,22 +311,6 @@ class CollectionField(Field):
         self._del_docs = set()
         for i in self._val.values():
             i.dirty_clear()
-
-    @staticmethod
-    def _mk_param(**kwargs):
-        key_param = {}
-        all_param = {}
-        for k, v in kwargs.items():
-            k1, _, k2 = str(k).partition(SEPARATOR)
-            if k2:
-                try:
-                    key_param.setdefault(k1, {})
-                    key_param[k1][k2] = v
-                except ValueError:
-                    all_param[k] = v
-            else:
-                all_param[k1] = v
-        return key_param, all_param
 
     @property
     def dirty(self):
@@ -248,55 +321,42 @@ class CollectionField(Field):
 
 class ArrayField(CollectionField):
     def __getitem__(self, key):
-        try:
-            return super(ArrayField, self).__getitem__(str(key))
-        except KeyError:
-            raise IndexError(key)
+        raise NotImplementedError
+
+    def __delitem__(self, key):
+        raise NotImplementedError
 
     def __len__(self):
         return max(map(int, self._val.keys())) + 1 if self._val else 0
 
-    @property
-    def value(self):
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.__getitem__(i)
+
+    def setitem(self, key, value, **kwargs):
+        raise NotImplementedError
+
+    def get(self, key=None, **kwargs):
+        if not (isinstance(key, (list, tuple)) or key is None):
+            key = [key]
+        return [self.__getitem__(i).get(**kwargs) for i in key or range(len(self))]
+
+    def set(self, value, **kwargs):
+        if isinstance(value, (list, tuple)):
+            value = {str(k): v for k, v in enumerate(value)}
+        super(ArrayField, self).set(value, **kwargs)
+
+    def _value(self):
         return [self._val[i].value if i in self._val else None for i in map(str, range(len(self)))]
+
+    value = property(_value, set)
 
     @property
     def self_value(self):
         return [self._val[i].self_value if i in self._val else None for i in map(str, range(len(self)))]
 
-    @property
-    def query(self):
-        from orm import Document
-        ret = {"$set": [], "$unset": {}}
-        for k in range(len(self)):
-            k = str(k)
-            v = self._val.get(k)
-            if k in self._add_docs:
-                if v._id is None or v.query:
-                    raise MokitoDBREFError(v)
-                ret["$set"].append(v.dbref)
-
-            elif k in self._del_docs:
-                ret["$set"].append(None)
-
-            elif self.dirty:
-                if v is None:
-                    ret["$set"].append(None)
-                elif isinstance(v, Document):
-                    if v._id is None or v.query:
-                        raise MokitoDBREFError(v)
-                    ret["$set"].append(v.dbref)
-                else:
-                    ret["$set"].append(v.value)
-
-        if not (ret["$set"] or self.dirty):
-            del ret["$set"]
-        if not ret["$unset"]:
-            del ret["$unset"]
-        return ret
-
     def _set(self, k1, k2, value, **kwargs):
-        from orm import Document
+        from orm import Document, Model
         try:
             x = self._val[k1]
         except KeyError:
@@ -304,6 +364,9 @@ class ArrayField(CollectionField):
         if k2:
             x.setitem(k2, value, **kwargs)
         else:
+            # if isinstance(value, Model):
+            #     value = value.value
+
             if isinstance(x, Document):
                 if value is None:
                     self._del_docs.add(k1)
@@ -320,38 +383,72 @@ class ArrayField(CollectionField):
                     self._add_docs.add(k1)
                     x.set(value, **kwargs)
             else:
+                if isinstance(value, Model):
+                    value = value.value
+
                 x.set(value, **kwargs)
 
-    def get(self, *fields, **kwargs):
-        key_param, all_param = self._mk_param(**kwargs)
+    @property
+    def query(self):
+        from orm import Document
+        ret = {"$set": []}
+        for k in range(len(self)):
+            k = str(k)
+            v = self._val.get(k)
 
-        _fields = OrderedDict()
-        for k in fields or range(len(self)):
-            k1, _, k2 = str(k).partition(SEPARATOR)
-            _fields.setdefault(k1, [])
-            if k2 and k2 not in _fields[k1]:
-                _fields[k1].append(k2)
+            if k in self._add_docs:
+                # if v._id is None or v.query:
+                if getattr(v, '_id') is None or v.query:
+                    raise MokitoDBREFError(v)
+                ret["$set"].append(v.dbref)
 
-        ret = []
-        for k1, k2 in _fields.items():
-            if k1 in self._val:
-                x = self._val[k1].get(*k2, **dict(key_param.get(k1, {}), **all_param))
-            else:
-                x = None
-            ret.append(x)
+            elif k in self._del_docs:
+                ret["$set"].append(None)
+
+            elif self.dirty:
+                if v is None:
+                    ret["$set"].append(None)
+
+                elif isinstance(v, Document):
+                    # if v._id is None or v.query:
+                    if getattr(v, '_id') is None or v.query:
+                        raise MokitoDBREFError(v)
+                    ret["$set"].append(v.dbref)
+
+                else:
+                    # ret["$set"].append(v.value)
+                    ret["$set"].append(v.get(inner=True))
+
+        if not (ret["$set"] or self.dirty):
+            del ret["$set"]
         return ret
-
-    def set(self, value, **kwargs):
-        if isinstance(value, (list, tuple)):
-            value = {str(k): v for k, v in enumerate(value)}
-        super(ArrayField, self).set(value, **kwargs)
 
 
 class ListField(ArrayField):
-    def __init__(self, rules, **kwargs):
-        super(ListField, self).__init__(**kwargs)
-        self._rules = make_field((rules+[None])[0])
+    def __init__(self, rules, _parent=None, **kwargs):
+        super(ListField, self).__init__(_parent=_parent, **kwargs)
         self._val = {}
+
+        if not rules:
+            rules = [None]
+
+        # self._rules = make_field((rules+[None])[0], _parent=self)
+
+        _rules = [make_field(i, _parent=self) for i in rules]
+        # self._rules = _rules[0]
+        self._rules = copy.deepcopy(_rules[0])
+        for k, v in enumerate(_rules):
+            if v._default:
+                v._parent = self
+                self._val[str(k)] = v
+
+    def __getitem__(self, key):
+        k1, _, k2 = str(key).partition(SEPARATOR)
+        try:
+            ret = self._val[k1]
+        except KeyError:
+            ret = UndefinedField(_parent=self)
+        return ret.__getitem__(k2) if k2 else ret
 
     def setitem(self, key, value, **kwargs):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -381,9 +478,9 @@ class ListField(ArrayField):
 
     def append(self, value):
         self.setitem(len(self), value)
-        self._dirty = True
+        # self._dirty = True
 
-    def pop(self, key=-1, default=None):
+    def pop(self, key=-1):
         k1, _, k2 = str(key).partition(SEPARATOR)
         if k2:
             return self._val[k1].pop(k2)
@@ -404,17 +501,25 @@ class ListField(ArrayField):
                 self._val[str(i - 1)] = self._val[str(i)]
                 self._dirty = True
                 del self._val[str(i)]
+
         if ret is None:
-            ret = copy.deepcopy(self._rules)
-            ret._parent = self
-            ret.set(default)
+            ret = UndefinedField(_parent=self)
         return ret
 
 
 class TupleField(ArrayField):
-    def __init__(self, rules, **kwargs):
-        super(TupleField, self).__init__(**kwargs)
+
+    def __init__(self, rules, _parent=None, **kwargs):
+        super(TupleField, self).__init__(_parent=_parent, **kwargs)
         self._val = {str(k): make_field(v, _parent=self) for k, v in enumerate(rules)}
+
+    def __getitem__(self, key):
+        k1, _, k2 = str(key).partition(SEPARATOR)
+        try:
+            ret = self._val[k1]
+            return ret.__getitem__(k2) if k2 else ret
+        except (KeyError, AttributeError):
+            raise IndexError(key)
 
     def __delitem__(self, key):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -423,9 +528,9 @@ class TupleField(ArrayField):
         except KeyError:
             raise IndexError
         if k2:
-            del x[k2]
+            x.__delitem__(k2)
         else:
-            x.clear()
+            x.set(None)
         self._dirty = True
 
     def setitem(self, key, value, **kwargs):
@@ -441,16 +546,30 @@ class TupleField(ArrayField):
 
 
 class DictField(CollectionField):
-    def __init__(self, rules, **kwargs):
-        super(DictField, self).__init__(**kwargs)
+
+    def __init__(self, rules, _parent=None, **kwargs):
+        super(DictField, self).__init__(_parent=_parent, **kwargs)
         self._rules = bool(rules)
-        self._val = {k: make_field(v, _parent=self) for k, v in rules.items()} if rules else {}
+        if rules:
+            self._val = {k: make_field(v, _parent=self) for k, v in rules.items()}
+        else:
+            self._val = {}
+
+    def __getitem__(self, key):
+        k1, _, k2 = str(key).partition(SEPARATOR)
+        try:
+            ret = self._val[k1]
+        except KeyError:
+            ret = UndefinedField(_parent=self)
+        return ret.__getitem__(k2) if k2 else ret
 
     def setitem(self, key, value, **kwargs):
         k1, _, k2 = str(key).partition(SEPARATOR)
-        if not self._rules:
+        if self._rules:
+            self._set(k1, k2, value, **kwargs)
+        else:
             self._val[k1] = make_field(value, _parent=self)
-        self._set(k1, k2, value, **kwargs)
+            # raise NotImplementedError
 
     def __delitem__(self, key):
         k1, _, k2 = str(key).partition(SEPARATOR)
@@ -463,11 +582,14 @@ class DictField(CollectionField):
         self._dirty = True
 
     def _set(self, k1, k2, value, **kwargs):
-        from orm import Document
+        from orm import Document, Model
         x = self._val[k1]
         if k2:
             x.setitem(k2, value, **kwargs)
         else:
+            # if isinstance(value, Model):
+            #     value = value.value
+
             if isinstance(x, Document):
                 if value is None:
                     self._del_docs.add(k1)
@@ -484,11 +606,22 @@ class DictField(CollectionField):
                     self._add_docs.add(k1)
                     x.set(value, **kwargs)
             else:
+                if isinstance(value, Model):
+                    value = value.value
+
                 x.set(value, **kwargs)
 
-    @property
-    def value(self):
+    def get(self, key=None, **kwargs):
+        if key is None:
+            key = self._val.keys()
+        if isinstance(key, (list, tuple)):
+            return {i: self.__getitem__(i).get(**kwargs) for i in key}
+        return self.__getitem__(key).get(**kwargs)
+
+    def _value(self):
         return {k: v.value for k, v in self._val.items()}
+
+    value = property(_value, CollectionField.set)
 
     @property
     def self_value(self):
@@ -496,25 +629,6 @@ class DictField(CollectionField):
 
     def items(self):
         return self._val.items()
-
-    def get(self, *fields, **kwargs):
-        key_param, all_param = self._mk_param(**kwargs)
-
-        _fields = {}
-        for k in fields or self._val.keys():
-            k1, _, k2 = str(k).partition(SEPARATOR)
-            _fields.setdefault(k1, [])
-            if k2 and k2 not in _fields[k1]:
-                _fields[k1].append(k2)
-
-        ret = {}
-        for k1, k2 in _fields.items():
-            if k1 in self._val:
-                x = self._val[k1].get(*k2, **dict(key_param.get(k1, {}), **all_param))
-            else:
-                x = None
-            ret[k1] = x
-        return ret
 
     def clear(self):
         if self._rules:
@@ -530,12 +644,13 @@ class DictField(CollectionField):
         ret = {"$set": {}, "$unset": {}}
 
         if not self._rules:
-            ret['$set'] = self.value
+            ret['$set'] = self.get(inner=True)
 
         else:
             for k, v in self._val.items():
                 if k in self._add_docs:
-                    if v._id is None or v.query:
+                    # if v._id is None or v.query:
+                    if getattr(v, '_id') is None or v.query:
                         raise MokitoDBREFError(v)
                     ret["$set"][k] = v.dbref
 
@@ -555,9 +670,8 @@ class DictField(CollectionField):
 
                     elif isinstance(v, ArrayField):
                         _q = v.query
-                        for j in ["$set", "$unset"]:
-                            if j in _q:
-                                ret[j][k] = _q[j]
+                        if "$set" in _q:
+                            ret["$set"][k] = _q["$set"]
 
                     elif isinstance(v, DictField):
                         _q = v.query

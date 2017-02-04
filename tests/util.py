@@ -114,7 +114,7 @@ ch1 = {'z1': 1, 'z2': 2, 'z3': 3}
 
 
 class Model0(mokito.Model):
-    fields = {
+    scheme = {
         'x1': float,
         'x2': [datetime.datetime],
         'x3': (int, mokito.Choice(ch1)),
@@ -130,7 +130,7 @@ class Model1(Model0):
 
 class Document1(Document0):
     __collection__ = TEST_COLLECTION1
-    fields = Model1
+    scheme = Model1
 
     prop1 = Model1.prop1
 
@@ -140,7 +140,7 @@ class Document1(Document0):
 
 
 class Model2(mokito.Model):
-    fields = {
+    scheme = {
         'f1': (int, str),
         'f2': {'a': int, 'b': int},
         'm1': Model1,
@@ -152,4 +152,4 @@ class Model2(mokito.Model):
 
 class Document2(Document0):
     __collection__ = TEST_COLLECTION2
-    fields = Model2
+    scheme = Model2

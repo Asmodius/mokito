@@ -17,9 +17,9 @@ DEFAULT_CONNECTIONS = 10
 
 class ModelMeta(type):
     def __new__(mcs, name, bases, attr):
-        fields = attr.get('fields')
-        if fields is not None and not isinstance(fields, dict):
-            attr['fields'] = getattr(fields, 'fields')
+        scheme = attr.get('scheme')
+        if scheme is not None and not isinstance(scheme, dict):
+            attr['scheme'] = getattr(scheme, 'scheme')
 
         _cls = type.__new__(mcs, name, bases, attr)
         if name != 'Model' and name != 'Document':
@@ -29,24 +29,25 @@ class ModelMeta(type):
 
 class Model(DictField):
     __metaclass__ = ModelMeta
-    fields = {}
+    scheme = {}
 
     def __init__(self, data=None, **kwargs):
-        super(Model, self).__init__(self.fields)
+        super(Model, self).__init__(self.scheme)
         if data:
             self.set(data, **kwargs)
 
-    def get(self, *fields, **kwargs):
-        data = {}
-        _fields = []
-        if fields:
-            for i in fields:
+    def get(self, key=None, **kwargs):
+        if isinstance(key, (list, tuple)):
+            data = {}
+            fields = []
+            for i in key:
                 if hasattr(self, i):
                     data[i] = getattr(self, i)
                 else:
-                    _fields.append(i)
+                    fields.append(i)
+            return dict(super(Model, self).get(fields, **kwargs), **data)
 
-        return dict(super(Model, self).get(*_fields, **kwargs), **data)
+        return super(Model, self).get(key, **kwargs)
 
 
 class Documents(UserList):
@@ -66,6 +67,7 @@ class Documents(UserList):
 
     @coroutine
     def reread(self, *fields):
+        # TODO: добавить кэш
         yield [i.reread(*fields) for i in self.data]
 
     @coroutine
@@ -84,8 +86,8 @@ class Documents(UserList):
     def filter(self, fn):
         return Documents(filter(fn, self.data))
 
-    def get(self, *fields, **kwargs):
-        return [i.get(*fields, **kwargs) for i in self.data]
+    def get(self, key, **kwargs):
+        return [i.get(key, **kwargs) for i in self.data]
 
 
 class Document(Model):
@@ -160,7 +162,7 @@ class Document(Model):
 
         elif self._id:
             cur = self.get_cursor()
-            data = yield cur.find_one(self._id, fields=self.fields.keys())
+            data = yield cur.find_one(self._id, fields=self.scheme.keys())
             if data:
                 self.clear()
                 self.set(data, inner=True)
@@ -191,7 +193,7 @@ class Document(Model):
     @coroutine
     def find_one(cls, spec_or_id):
         cur = cls.get_cursor()
-        fields = cls.fields.keys()
+        fields = cls.scheme.keys()
         data = yield cur.find_one(spec_or_id, fields=fields)
         if data:
             self = cls(data, inner=True)
@@ -201,16 +203,23 @@ class Document(Model):
 
     @classmethod
     @coroutine
-    def find_raw(cls, spec, *fields):
+    def find_raw(cls, spec, *fields, **kwargs):
         cur = cls.get_cursor()
-        data = yield cur.find(spec, fields=fields)
+        kw = {
+            'fields': fields,
+            'skip': kwargs.get('skip', 0),
+            'limit': kwargs.get('limit', 0),
+            'sort': kwargs.get('sort'),
+            'hint': kwargs.get('hint')
+        }
+        data = yield cur.find(spec, **kw)
         raise Return(data)
 
     @classmethod
     @coroutine
     def find(cls, spec=None, skip=0, limit=0, sort=None, hint=None):
         cur = cls.get_cursor()
-        fields = cls.fields.keys()
+        fields = cls.scheme.keys()
         data = yield cur.find(spec, fields, skip, limit, sort=sort, hint=hint)
         res = Documents(cls(i, inner=True) for i in data)
         res.dirty_clear()

@@ -14,17 +14,17 @@ class TestClass3A(mokito.orm.Document):
     __uri__ = TEST_DB_URI
     __database__ = TEST_DB_NAME
     __collection__ = TEST_COLLECTION3
-    fields = {
+    scheme = {
         'f_0': None,
         'f_1': str,
     }
 
     def info(self):
-        return '%s: %s' % (self.__class__.__name__, self.fields)
+        return '%s: %s' % (self.__class__.__name__, self.scheme)
 
 
 class TestClass3B(TestClass3A):
-    fields = {
+    scheme = {
         'f_3': int,
     }
 
@@ -33,6 +33,6 @@ class TestClass3B(TestClass3A):
 def main():
     print
     print 'ASYNC1', mokito.KnownClasses.data
-    print 'ASYNC2', TestClass3B.fields
+    print 'ASYNC2', TestClass3B.scheme
 
 IOLoop.current().run_sync(main)

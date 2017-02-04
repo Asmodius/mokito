@@ -62,11 +62,18 @@ class ConnectionTestCase(AsyncTestCase):
     def test_collection_names(self):
         col = [u'foo', u'bar']
         for i in col:
+            yield self.db.command('drop', i)
+
+        for i in col:
             yield self.db[i].insert({'foo': 1})
+
         res = yield self.db.collection_names()
-        self.assertListEqual(col, res)
+        self.assertListEqual(res, col)
 
-    def test_get_cursor(self):
-        res = self.db.get_cursor('foo')
-        self.assertIsInstance(res, mokito.cursor.Cursor)
+        yield self.db.command('drop', 'bar')
+        res = yield self.db.collection_names()
+        self.assertListEqual(res, [u'foo'])
 
+        yield self.db.command('drop', 'foo')
+        res = yield self.db.collection_names()
+        self.assertListEqual(res, [])
