@@ -233,7 +233,10 @@ class DateTimeField(Field):
             if _date_format and _date_format != 'iso':
                 value = datetime.datetime.strptime(value, _date_format)
             else:
-                value = parse(value).replace(tzinfo=None)
+                try:
+                    value = parse(value).replace(tzinfo=None)
+                except TypeError:
+                    value = None
         super(DateTimeField, self).set(value, **kwargs)
 
     value = property(Field._value, set)
@@ -583,7 +586,10 @@ class DictField(CollectionField):
 
     def _set(self, k1, k2, value, **kwargs):
         from orm import Document, Model
-        x = self._val[k1]
+        try:
+            x = self._val[k1]
+        except KeyError:
+            return
         if k2:
             x.setitem(k2, value, **kwargs)
         else:

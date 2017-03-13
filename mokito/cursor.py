@@ -106,6 +106,7 @@ class Cursor(object):
                 fields = dict((i, 1) for i in fields)
 
         col_name = self.full_collection_name
+        data = None
         with self.__pool.get_connection() as conn:
             request = message.query(query_options(), col_name, skip, limit, spec, fields)
             res = yield conn.send_message(request)
