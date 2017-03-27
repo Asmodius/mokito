@@ -244,6 +244,9 @@ class Cursor(object):
         if no_replace and not update.get("$set"):
             update = {"$set": update}
 
+        if not update:
+            raise Return(False)
+
         with self.__pool.get_connection() as conn:
             request = message.update(self.full_collection_name, upsert,
                                      multi, spec, update, safe, kwargs)

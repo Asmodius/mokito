@@ -988,15 +988,13 @@ class TestModels(unittest.TestCase):
         self.assertEqual(d.query, {})
 
         d['d1.x4.a'] = 400
-        with self.assertRaises(mokito.errors.MokitoDBREFError):
-            _ = d.query
+        self.assertEqual(d.query, {})
 
         d['d1'].dirty_clear()
         self.assertFalse(d.dirty)
         self.assertEqual(d.query, {})
         d['d1.x4.a'] = 500
-        with self.assertRaises(mokito.errors.MokitoDBREFError):
-            _ = d.query
+        self.assertEqual(d.query, {})
 
         d.dirty_clear()
         self.assertEqual(d.query, {})

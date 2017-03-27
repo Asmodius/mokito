@@ -61,7 +61,7 @@ class ConnectionTestCase(AsyncTestCase):
     @gen_test
     def test_collection_names(self):
         col = [u'foo', u'bar']
-        for i in col:
+        for i in col+[u'tst1', u'tst2']:
             yield self.db.command('drop', i)
 
         for i in col:

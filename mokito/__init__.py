@@ -18,4 +18,4 @@ __all__ = [
     "Undefined"
 ]
 
-version = "0.2.14"
+version = "0.2.15"

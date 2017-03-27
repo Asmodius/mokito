@@ -665,11 +665,8 @@ class DictField(CollectionField):
                 elif k in self._del_docs:
                     ret["$unset"][k] = ''
 
-                elif v.dirty:
-                    if isinstance(v, Document):
-                        raise MokitoDBREFError(v)
-
-                    elif isinstance(v, Model):
+                elif v.dirty and not isinstance(v, Document):
+                    if isinstance(v, Model):
                         _q = v.query
                         for j in ["$set", "$unset"]:
                             if j in _q:
