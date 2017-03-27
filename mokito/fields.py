@@ -309,11 +309,13 @@ class CollectionField(Field):
             raise TypeError()
 
     def dirty_clear(self):
+        from orm import Document
         self._dirty = False
         self._add_docs = set()
         self._del_docs = set()
         for i in self._val.values():
-            i.dirty_clear()
+            if not isinstance(i, Document):
+                i.dirty_clear()
 
     @property
     def dirty(self):
