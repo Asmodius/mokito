@@ -1,21 +1,16 @@
-# coding: utf-8
-
-from .client import Client
-from .orm import Model, Document, Documents
-from .manage import ModelManager
+from .documents import Document, Documents
+from .models import Model
+# from .manage import ModelManager
 from .fields import ChoiceField as Choice
-from .fields import UndefinedField as Undefined
-import errors
+import mokito.errors as errors
 
 __all__ = [
-    "Client",
     "Document",
     "Documents",
     "Model",
-    "ModelManager",
+    # "ModelManager",
     "errors",
     "Choice",
-    "Undefined"
 ]
 
-version = "0.2.15"
+version = "0.3.0"

@@ -1,16 +1,17 @@
-# coding: utf-8
-
 import datetime
 
 from bson import ObjectId, DBRef
+import motor.motor_tornado
 
 import mokito
 
-
 TEST_DB_NAME = 'test_mokito'
-TEST_DB_URI = "mongodb://127.0.0.1:27017"
+TEST_DB_URI = 'mongodb://127.0.0.1:27017'
 TEST_COLLECTION1 = 'tst1'
 TEST_COLLECTION2 = 'tst2'
+
+db = motor.motor_tornado.MotorClient(TEST_DB_URI)[TEST_DB_NAME]
+
 
 dt1 = datetime.datetime(2016, 1, 2, 3, 4, 5)
 dt2 = datetime.datetime(2016, 2, 3, 4, 5, 6)
@@ -106,8 +107,7 @@ col2_data2 = {
 
 
 class Document0(mokito.Document):
-    __uri__ = TEST_DB_URI
-    __database__ = TEST_DB_NAME
+    __database__ = db
 
 
 ch1 = {'z1': 1, 'z2': 2, 'z3': 3}

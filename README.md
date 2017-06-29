@@ -1,5 +1,5 @@
 # mokito
-An asynchronous driver and toolkit for accessing MongoDB in Tornado
+An asynchronous ORM for accessing MongoDB in Tornado
 
 ## What is mokito?
 (MOngodb + [mongoKIt](https://github.com/namlook/mongokit) + TOrnado) is an asynchronous toolkit for working with ``mongodb`` inside a ``tornado`` app, like ``mongokit``. Mokito has a pure implementation of python + tornado and only depends on tornado and bson (provided by pymongo)
