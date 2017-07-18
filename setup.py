@@ -39,8 +39,7 @@ from mokito import version
 setup(
     name='mokito',
     version=version,
-    description="Mokito is an asynchronous driver and toolkit for working with"
-                " MongoDB inside a Tornado app",
+    description="Mokito is an asynchronous ORM for working with MongoDB inside a Tornado app",
     long_description=open('README.md').read(),
     keywords='mongo mongodb tornado mokito',
     author='Asmodius',
@@ -53,7 +52,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
     zip_safe=False,
