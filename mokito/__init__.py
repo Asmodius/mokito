@@ -13,4 +13,7 @@ __all__ = [
     "Choice",
 ]
 
-version = "0.3.0"
+version = "0.3.1"
+
+# TODO: add indexes
+# TODO: add forms

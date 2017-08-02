@@ -162,6 +162,9 @@ class Document(Model):
         if spec is None:
             return {}
 
+        if isinstance(spec, bytes):
+            return {"_id": ObjectId(spec.decode('utf-8'))}
+
         if isinstance(spec, str):
             return {"_id": ObjectId(spec)}
 

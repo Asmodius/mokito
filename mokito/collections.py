@@ -97,6 +97,13 @@ class ArrayField(Field):
 
     value = property(get_value, set_value)
 
+    def update_values(self, *args, **kwargs):
+        for k, v in enumerate(args):
+            self[k].value = v
+
+        for k, v in kwargs.items():
+            self[k].value = v
+
     @property
     def self_value(self):
         # TODO: переделать на map
@@ -365,6 +372,10 @@ class DictField(Field):
                     item.set_value(v, **kwargs)
 
     value = property(get_value, set_value)
+
+    def update_values(self, **kwargs):
+        for k, v in kwargs.items():
+            self[k].value = v
 
     @property
     def self_value(self):

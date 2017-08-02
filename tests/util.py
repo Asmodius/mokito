@@ -153,3 +153,5 @@ class Model2(mokito.Model):
 class Document2(Document0):
     __collection__ = TEST_COLLECTION2
     scheme = Model2
+
+# TODO: add test update_values
