@@ -47,6 +47,12 @@ class Documents(UserList):
 
     value = property(get_value)
 
+    def as_json(self, *args, **kwargs):
+        return [i.as_json(*args, **kwargs) for i in self.data]
+
+    def as_dict(self, *args, **kwargs):
+        return {str(i.id): i.as_json(*args, **kwargs) for i in self.data}
+
 
 class Result(object):
     def __init__(self, cls, db_cursor):
@@ -83,6 +89,17 @@ class Document(Model):
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self._id)
+
+    def __getitem__(self, key):
+        if key == 'id':
+            return self.id
+        return super().__getitem__(key)
+
+    def __setitem__(self, key, value):
+        if key == 'id':
+            self.id = value
+        else:
+            super().__setitem__(key, value)
 
     # def __call__(self, method_name, *args, **kwargs):
     #     return getattr(self, method_name)(*args, **kwargs)
@@ -152,6 +169,29 @@ class Document(Model):
             super().set_value(value, **kwargs)
 
     value = property(get_value, set_value)
+
+    def as_json(self, *args, **kwargs):
+        def _set_v():
+            if hasattr(self, k):
+                v = getattr(self, k, None)
+                if hasattr(v, '__call__'):
+                    v = v()
+            else:
+                v = self[k]
+                if hasattr(v, 'get_value'):
+                    v = v.get_value(_format='json')
+
+            if isinstance(v, ObjectId):
+                v = str(v)
+            res[alias] = v
+
+        res = {}
+        for k in args:
+            alias = k
+            _set_v()
+        for alias, k in kwargs.items():
+            _set_v()
+        return res
 
     @classmethod
     def get_collection(cls, database=None, collection=None):
