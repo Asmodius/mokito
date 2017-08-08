@@ -60,12 +60,14 @@ class ArrayField(Field):
         if isinstance(value, (list, tuple)):
             value = {str(k): v for k, v in enumerate(value)}
 
-        if value is None:
+        elif value is None:
             self.clear()
             return
 
         if not isinstance(value, dict):
             raise TypeError()
+
+        value = self.validate(value, **kwargs)
 
         for key, v in value.items():
             k1, k2 = self._sep_key(key)
@@ -91,9 +93,7 @@ class ArrayField(Field):
                     item.set_value(v, **kwargs)
 
     def get_value(self, **kwargs):
-        # TODO: переделать на map
-        rng = [str(i) for i in range(len(self))]
-        return [self._val[i].get_value(**kwargs) if i in self._val else None for i in rng]
+        return [self._val[i].get_value(**kwargs) if i in self._val else None for i in map(str, range(len(self)))]
 
     value = property(get_value, set_value)
 
@@ -106,9 +106,7 @@ class ArrayField(Field):
 
     @property
     def self_value(self):
-        # TODO: переделать на map
-        rng = [str(i) for i in range(len(self))]
-        return [self._val[i].self_value if i in self._val else None for i in rng]
+        return [self._val[i].self_value if i in self._val else None for i in map(str, range(len(self)))]
 
     def make_query(self, short=False):
         from .documents import Document
@@ -148,10 +146,12 @@ class ListField(ArrayField):
         if not rules:
             rules = [None]
 
+        self._default = False
         _rules = [make_field(i, _parent=self) for i in rules]
         self._rules = copy.deepcopy(_rules[0])
         for k, v in enumerate(_rules):
             if v._default:
+                self._default = True
                 v._parent = self
                 self._val[str(k)] = v
 
@@ -215,6 +215,7 @@ class ListField(ArrayField):
 
     def append_value(self, value, **kwargs):
         item = self._test_item(str(len(self)))
+        value = self.validate(value, **kwargs)
         item.set_value(value, **kwargs)
 
     def pop(self, key=-1):
@@ -229,7 +230,13 @@ class ListField(ArrayField):
 class TupleField(ArrayField):
     def __init__(self, rules, _parent=None, **kwargs):
         super().__init__(_parent=_parent, **kwargs)
-        self._val = {str(k): make_field(v, _parent=self) for k, v in enumerate(rules)}
+        self._default = False
+        self._val = {}
+        for k, v in enumerate(rules):
+            item = make_field(v, _parent=self)
+            if item._default:
+                self._default = True
+            self._val[str(k)] = item
 
     def _test_item(self, key):
         try:
@@ -270,8 +277,12 @@ class TupleField(ArrayField):
         self.dirty = True
 
     def clear(self):
-        for i in self._val.values():
-            i.clear()
+        for k, v in self._val.items():
+            if isinstance(v, (ArrayField, DictField)):
+                v.clear()
+            else:
+                self[k] = None
+
         self.dirty = True
 
 
@@ -281,11 +292,15 @@ class DictField(Field):
         self._dirty_fields = {}
 
         # TODO: убрать безрулевые, т.е. {}
+        self._default = False
+        self._val = {}
         self._rules = bool(rules)
         if rules:
-            self._val = {k: make_field(v, _parent=self) for k, v in rules.items()}
-        else:
-            self._val = {}
+            for k, v in rules.items():
+                item = make_field(v, _parent=self)
+                if item._default:
+                    self._default = True
+                self._val[k] = item
 
     def _test_item(self, key):
         from .fields import AnyField
@@ -347,6 +362,8 @@ class DictField(Field):
 
         if not isinstance(value, dict):
             raise TypeError()
+
+        value = self.validate(value, **kwargs)
 
         for key, v in value.items():
             k1, k2 = self._sep_key(key)

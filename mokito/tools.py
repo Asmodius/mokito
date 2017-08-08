@@ -11,9 +11,10 @@ SEPARATOR = '.'
 
 def make_field(rules, _parent=None):
     from .models import Model
-    from .documents import Document
+    # from .documents import Document
     from .fields import Field, AnyField, IntField, FloatField, StringField, BooleanField, ObjectIdField, DateTimeField
     from .collections import ListField, TupleField, DictField
+    from .geo_fileds import GEOField, _Point1, _Point2
 
     if rules is None:
         return AnyField(_parent=_parent)
@@ -25,26 +26,29 @@ def make_field(rules, _parent=None):
 
     else:
         if inspect.isclass(rules):
+            # print('l0-1')
             _type = rules
             _val = None
         else:
+            # print('l0-2')
             _type = type(rules)
             _val = rules
 
         if _type is int:
-            return IntField(_default=_val, _parent=_parent)
+            return IntField(_val, _parent=_parent)
         if _type is float:
-            return FloatField(_default=_val, _parent=_parent)
+            return FloatField(_val, _parent=_parent)
         if _type is str:
-            return StringField(_default=_val, _parent=_parent)
+            return StringField(_val, _parent=_parent)
         if _type is bool:
-            return BooleanField(_default=_val, _parent=_parent)
+            return BooleanField(_val, _parent=_parent)
         if _type is ObjectId:
-            return ObjectIdField(_default=_val, _parent=_parent)
+            return ObjectIdField(_val, _parent=_parent)
         if _type is datetime.datetime:
-            return DateTimeField(_default=_val, _parent=_parent)
+            return DateTimeField(_val, _parent=_parent)
 
         if _type is list:
+            # print('L1', rules, _val) # rules == _val - может rules поменять на _val ?
             return ListField(rules, _parent=_parent)
         if _type is tuple:
             return TupleField(rules, _parent=_parent)
@@ -55,13 +59,23 @@ def make_field(rules, _parent=None):
         #     print('SC', _type)
         #     return _type(_parent=_parent)
 
+        if issubclass(_type, _Point1):
+            return _type(_parent=_parent)
+
+        if issubclass(_type, _Point2):
+            return _type(_parent=_parent)
+
+        if issubclass(_type, GEOField):
+            return _type(_parent=_parent)
+
         if issubclass(_type, Model):
             return _type(_parent=_parent)
 
         if issubclass(_type, Field):
-            x = _type(rules)
-            x._parent = _parent
-            return x
+            return _type(_parent=_parent)
+            # x = _type(rules)
+            # x._parent = _parent
+            # return x
         raise TypeError()
 
 

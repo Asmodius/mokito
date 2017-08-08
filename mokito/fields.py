@@ -18,8 +18,6 @@ class Field(object):
         self._parent = _parent
         self._dirty = False
         self._default = _default
-        if _default is not None:
-            self.set_value(_default)
 
     def __str__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.value)
@@ -43,10 +41,14 @@ class Field(object):
         self._val = self._default
         self.dirty = True
 
+    def validate(self, value, **kwargs):
+        return value
+
     def get_value(self, **kwargs):
-        return self._val
+        return self._default if self._val is None else self._val
 
     def set_value(self, value, **kwargs):
+        value = self.validate(value, **kwargs)
         res = self._val != value
         if res:
             self._val = value
@@ -73,12 +75,10 @@ class AnyField(Field):
 
         return item if isinstance(item, Field) else AnyField(item)
 
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if isinstance(value, tuple):
             value = list(value)
-        super().set_value(value, **kwargs)
-
-    value = property(Field.get_value, set_value)
+        return value
 
 
 class NumberField(Field):
@@ -89,72 +89,52 @@ class NumberField(Field):
 
 
 class IntField(NumberField):
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if value is not None:
             value = int(value)
-        super().set_value(value, **kwargs)
-
-    value = property(NumberField.get_value, set_value)
+        return value
 
 
 class FloatField(NumberField):
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if value is not None:
             value = float(value)
-        super().set_value(value, **kwargs)
-
-    value = property(NumberField.get_value, set_value)
+        return value
 
 
 class StringField(Field):
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if value is not None:
             if isinstance(value, (bytes, bytearray)):
                 value = str(value, 'utf-8')
             elif not isinstance(value, str):
                 value = str(value)
-        super().set_value(value, **kwargs)
-
-    value = property(Field.get_value, set_value)
+        return value
 
 
 class BooleanField(Field):
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if value is not None:
             value = bool(value)
-        super().set_value(value, **kwargs)
-
-    value = property(Field.get_value, set_value)
+        return value
 
 
 class ObjectIdField(Field):
-    def get_value(self, _format=None, **kwargs):
-        if self._val is not None:
-            return str(self._val) if _format == 'json' else self._val
-
-    def set_value(self, value, **kwargs):
+    def validate(self, value, **kwargs):
         if value is not None:
             value = ObjectId(value)
-        super().set_value(value, **kwargs)
+        return value
 
-    value = property(get_value, set_value)
+    def get_value(self, _format=None, **kwargs):
+        value = self._default if self._val is None else self._val
+        if value is not None:
+            return str(value) if _format == 'json' else value
+
+    value = property(get_value, Field.set_value)
 
 
 class DateTimeField(Field):
-    def get_value(self, _date_format=None, tz_name=None, without_microsecond=True, tz=None, **kwargs):
-        if _date_format is None and (tz_name or tz):
-            _date_format = 'iso'
-        if self._val is None or _date_format is None:
-            return self._val
-
-        _tz = pytz.timezone(tz_name) if tz_name else tz
-        val = _tz.fromutc(self._val) if _tz else self._val
-        if without_microsecond:
-            val = val.replace(microsecond=0)
-
-        return val.isoformat() if _date_format.lower() == 'iso' else val.strftime(_date_format)
-
-    def set_value(self, value, _date_format=None, **kwargs):
+    def validate(self, value, _date_format=None, **kwargs):
         if not (value is None or isinstance(value, datetime.datetime)):
             if _date_format and _date_format != 'iso':
                 value = datetime.datetime.strptime(value, _date_format)
@@ -163,9 +143,23 @@ class DateTimeField(Field):
                     value = parse(value).replace(tzinfo=None)
                 except TypeError:
                     value = None
-        super().set_value(value, **kwargs)
+        return value
 
-    value = property(get_value, set_value)
+    def get_value(self, _date_format=None, tz_name=None, without_microsecond=True, tz=None, **kwargs):
+        value = self._default if self._val is None else self._val
+        if _date_format is None and (tz_name or tz):
+            _date_format = 'iso'
+        if value is None or _date_format is None:
+            return value
+
+        _tz = pytz.timezone(tz_name) if tz_name else tz
+        val = _tz.fromutc(value) if _tz else value
+        if without_microsecond:
+            val = val.replace(microsecond=0)
+
+        return val.isoformat() if _date_format.lower() == 'iso' else val.strftime(_date_format)
+
+    value = property(get_value, Field.set_value)
 
 
 class ChoiceField(Field):
@@ -190,12 +184,13 @@ class ChoiceField(Field):
         if value is not None:
             raise MokitoChoiceError(value)
 
-    def get_value(self, inner=False, **kwargs):
-        return self._val if inner else self._choices.get(self._val, None)
-
-    def set_value(self, value, inner=False, **kwargs):
+    def validate(self, value, inner=False, **kwargs):
         if not inner:
             value = self._py_2_mongo(value)
-        super().set_value(value, **kwargs)
+        return value
 
-    value = property(get_value, set_value)
+    def get_value(self, inner=False, **kwargs):
+        value = self._default if self._val is None else self._val
+        return value if inner else self._choices.get(value, None)
+
+    value = property(get_value, Field.set_value)
