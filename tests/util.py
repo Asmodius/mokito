@@ -9,6 +9,7 @@ TEST_DB_NAME = 'test_mokito'
 TEST_DB_URI = 'mongodb://127.0.0.1:27017'
 TEST_COLLECTION1 = 'tst1'
 TEST_COLLECTION2 = 'tst2'
+TEST_COLLECTION3 = 'tst3'
 
 db = motor.motor_tornado.MotorClient(TEST_DB_URI)[TEST_DB_NAME]
 
@@ -106,6 +107,21 @@ col2_data2 = {
 }
 
 
+col3_id1 = ObjectId()
+col3_data1 = {
+    '_id': col3_id1,
+    'foo': 1,
+    'bar': 'zzz'
+}
+
+col3_id2 = ObjectId()
+col3_data2 = {
+    '_id': col3_id2,
+    'foo': 2,
+    'bar': 'aaa'
+}
+
+
 class Document0(mokito.Document):
     __database__ = db
 
@@ -153,5 +169,17 @@ class Model2(mokito.Model):
 class Document2(Document0):
     __collection__ = TEST_COLLECTION2
     scheme = Model2
+
+
+class Document3(Document0):
+    __collection__ = TEST_COLLECTION3
+    scheme = {
+        'foo': int,
+        'bar': str,
+    }
+
+
+class Document4(Document3):
+    sorting = ['-foo']
 
 # TODO: add test update_values

@@ -1,6 +1,4 @@
-import copy
-
-from .fields import Field, FloatField, StringField
+from .fields import FloatField, StringField
 from .collections import TupleField, ListField, DictField
 
 
@@ -35,7 +33,7 @@ class _Latitude(FloatField):
 
 class _Point1(TupleField):
     """
-    [x, y]
+    [lng, lat]
     """
 
     def __init__(self, _default=None, _parent=None, **kwargs):
@@ -46,11 +44,27 @@ class _Point1(TupleField):
                  _Latitude(_default=_default[1])]
         super().__init__(rules, _parent=_parent, **kwargs)
 
+    def get_long(self):
+        return self[0].value
+
+    def set_long(self, value):
+        self[0].value = value
+
+    longitude = property(get_long, set_long)
+
+    def get_lat(self):
+        return self[1].value
+
+    def set_lat(self, value):
+        self[1].value = value
+
+    latitude = property(get_lat, set_lat)
+
 
 class _Point2(ListField):
     """
     [
-        [x, y], ..., [xn, yn]
+        [lng, lat], ..., [lngN, latN]
     ]
     """
 
@@ -70,9 +84,9 @@ class _Point2(ListField):
 class _Point3(ListField):
     """
     [
-        [ [x1, y1], ..., [x1n, y1n] ],
+        [ [lng1, lat1], ..., [lng1N, lat1N] ],
         ...
-        [ [xp, yp], ..., [xpn, ypn] ],
+        [ [lngP, latP], ..., [lngPN, latPN] ]
     ]
     """
 
@@ -92,9 +106,9 @@ class _Point3(ListField):
 class _Point4(_Point3):
     """
     [
-        [ [x1, y1], ..., [x1n, y1n] ],
+        [ [lng1, lat1], ..., [lng1N, lat1N] ],
         ...
-        [ [xp, yp], ..., [xpn, ypn] ],
+        [ [lngP, latP], ..., [lngPN, latPN] ]
     ]
     """
 
@@ -113,15 +127,15 @@ class _Point5(ListField):
     """
     [
         [
-            [ [x1, y1], ..., [x1n, y1n] ],
+            [ [lng1, lat1], ..., [lng1N, lat1N] ],
             ...
-            [ [xp, yp], ..., [xpn, ypn] ],
+            [ [lngP, latP], ..., [lngPN, latPN] ]
         ],
         ...
         [
-            [ [x1, y1], ..., [x1n, y1n] ],
+            [ [lng1, lat1], ..., [lng1N, lat1N] ],
             ...
-            [ [xp, yp], ..., [xpn, ypn] ],
+            [ [lngP, latP], ..., [lngPN, latPN] ]
         ]
     ]
     """

@@ -27,7 +27,9 @@ __all__ = [
     "GEOMultiPolygon"
 ]
 
-version = "0.3.3"
+version = "0.3.4"
 
 # TODO: add indexes
 # TODO: add forms
+# TODO: add GraphQL
+# TODO: add .find(preload)

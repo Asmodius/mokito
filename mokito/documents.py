@@ -2,6 +2,7 @@ import copy
 from collections import UserList
 
 from bson import DBRef, ObjectId
+from pymongo import ASCENDING, DESCENDING
 
 from .models import Model
 from .errors import MokitoORMError
@@ -76,6 +77,7 @@ class Document(Model):
     __database__ = None
     __collection__ = None
     BY_ID_ERROR = 'Запись не найдена'
+    sorting = []
 
     def __init__(self, data=None, **kwargs):
         self.loaded = False
@@ -198,20 +200,25 @@ class Document(Model):
         return (database or cls.__database__)[collection or cls.__collection__]
 
     @staticmethod
-    def _norm_spec(spec):
+    def norm_spec(spec):
         if spec is None:
             return {}
-
         if isinstance(spec, bytes):
             return {"_id": ObjectId(spec.decode('utf-8'))}
-
         if isinstance(spec, str):
             return {"_id": ObjectId(spec)}
-
         if isinstance(spec, ObjectId):
             return {"_id": spec}
-
         return spec
+
+    @classmethod
+    def norm_sort(cls, sort):
+        _sort = sort or cls.sorting
+        if not _sort:
+            return
+        if not isinstance(_sort, list):
+            _sort = [_sort]
+        return [(i[1:], DESCENDING) if i[0] == '-' else (i, ASCENDING) for i in _sort]
 
     @classmethod
     async def by_id(cls, _id):
@@ -232,7 +239,7 @@ class Document(Model):
 
     @classmethod
     async def find_one(cls, spec_or_id):
-        spec = cls._norm_spec(spec_or_id)
+        spec = cls.norm_spec(spec_or_id)
         data = await cls.get_collection().find_one(spec, list(cls.scheme.keys()))
         if data:
             return cls.mk(data)
@@ -252,18 +259,19 @@ class Document(Model):
 
     @classmethod
     def find(cls, spec_or_id=None, skip=0, limit=0, sort=None, hint=None):
-        spec = cls._norm_spec(spec_or_id)
-        cursor = cls.get_collection().find(spec, list(cls.scheme.keys()), skip=skip, limit=limit)
+        spec = cls.norm_spec(spec_or_id)
+        sort = cls.norm_sort(sort)
+        cursor = cls.get_collection().find(spec, list(cls.scheme.keys()), skip=skip, limit=limit, sort=sort)
         return Result(cls, cursor)
 
     @classmethod
     async def count(cls, spec=None):
-        spec = cls._norm_spec(spec)
+        spec = cls.norm_spec(spec)
         return await cls.get_collection().count(spec)
 
     @classmethod
     async def distinct(cls, key, spec=None):
-        spec = cls._norm_spec(spec)
+        spec = cls.norm_spec(spec)
         return await cls.get_collection().distinct(key, spec)
 
     async def reread(self, *fields):
