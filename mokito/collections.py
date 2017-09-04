@@ -5,7 +5,16 @@ from .tools import make_field, SEPARATOR
 from .errors import MokitoDBREFError
 
 
-class ArrayField(Field):
+class CollectionField(Field):
+    def __init__(self, _parent=None, **kwargs):
+        super().__init__(_parent=_parent, **kwargs)
+        self._val = {}
+        self._dirty_fields = {}
+
+    @property
+    def dirty_fields(self):
+        return list(self._dirty_fields.keys())
+
     def __getitem__(self, key):
         raise NotImplementedError
 
@@ -16,6 +25,18 @@ class ArrayField(Field):
         raise NotImplementedError
 
     def __len__(self):
+        raise NotImplementedError
+
+    def _test_item(self, key):
+        raise NotImplementedError
+
+    def _sep_key(self, key):
+        k1, _, k2 = str(key).partition(SEPARATOR)
+        return k1, k2
+
+
+class ArrayField(CollectionField):
+    def __len__(self):
         return max(map(int, self._val.keys())) + 1 if self._val else 0
 
     def __iter__(self):
@@ -23,7 +44,7 @@ class ArrayField(Field):
             yield self.__getitem__(i)
 
     def _sep_key(self, key):
-        k1, _, k2 = str(key).partition(SEPARATOR)
+        k1, k2 = super()._sep_key(key)
         try:
             ik1 = int(k1)
         except ValueError:
@@ -33,8 +54,9 @@ class ArrayField(Field):
             k1 = str(ik1)
         return k1, k2
 
-    def _test_item(self, key):
-        raise NotImplementedError
+    @property
+    def dirty_fields(self):
+        return list(map(int, self._dirty_fields.keys()))
 
     def dirty_clear(self):
         from .documents import Document
@@ -42,6 +64,7 @@ class ArrayField(Field):
         for i in self._val.values():
             if not isinstance(i, Document):
                 i.dirty_clear()
+        self._dirty_fields = {}
 
     def get_dirty(self):
         from .documents import Document
@@ -52,7 +75,7 @@ class ArrayField(Field):
                     break
         return self._dirty
 
-    dirty = property(get_dirty, Field.set_dirty)
+    dirty = property(get_dirty, CollectionField.set_dirty)
 
     def set_value(self, value, **kwargs):
         from .documents import Document, Model
@@ -141,11 +164,8 @@ class ArrayField(Field):
 class ListField(ArrayField):
     def __init__(self, rules, _parent=None, **kwargs):
         super().__init__(_parent=_parent, **kwargs)
-        self._val = {}
-
         if not rules:
             rules = [None]
-
         self._default = False
         _rules = [make_field(i, _parent=self) for i in rules]
         self._rules = copy.deepcopy(_rules[0])
@@ -185,7 +205,7 @@ class ListField(ArrayField):
             elif isinstance(self._rules, AnyField) or value.__class__ == self._rules.__class__:
                 self._val[k1] = value
             else:
-                raise TypeError('%s not %s' % (value.__class__.__name__, self._rules.__class__.__name__))
+                raise TypeError('%s is not %s' % (value.__class__.__name__, self._rules.__class__.__name__))
 
     def __delitem__(self, key):
         k1, k2 = self._sep_key(key)
@@ -231,7 +251,6 @@ class TupleField(ArrayField):
     def __init__(self, rules, _parent=None, **kwargs):
         super().__init__(_parent=_parent, **kwargs)
         self._default = False
-        self._val = {}
         for k, v in enumerate(rules):
             item = make_field(v, _parent=self)
             if item._default:
@@ -286,14 +305,11 @@ class TupleField(ArrayField):
         self.dirty = True
 
 
-class DictField(Field):
+class DictField(CollectionField):
     def __init__(self, rules, _parent=None, **kwargs):
         super().__init__(_parent=_parent, **kwargs)
-        self._dirty_fields = {}
-
         # TODO: убрать безрулевые, т.е. {}
         self._default = False
-        self._val = {}
         self._rules = bool(rules)
         if rules:
             for k, v in rules.items():
@@ -302,17 +318,15 @@ class DictField(Field):
                     self._default = True
                 self._val[k] = item
 
+    def __len__(self):
+        raise len(self._val)
+
     def _test_item(self, key):
         from .fields import AnyField
 
         if not self._rules and key not in self._val:
             self._val[key] = AnyField(_parent=self)
         return self._val[key]
-
-    @staticmethod
-    def _sep_key(key):
-        k1, _, k2 = str(key).partition(SEPARATOR)
-        return k1, k2
 
     def __getitem__(self, key):
         k1, k2 = self._sep_key(key)
@@ -416,6 +430,7 @@ class DictField(Field):
         for k, v in self._val.items():
             if not isinstance(v, Document) and v.dirty:
                 self._dirty_fields[k] = True
+                print('X5', self._dirty_fields)
                 return True
         return False
 
@@ -447,6 +462,7 @@ class DictField(Field):
                         ret["$set"][k] = v.dbref
 
                 elif k in self._dirty_fields or v.dirty:
+                    print('X7', self._dirty_fields)
                     if isinstance(v, ArrayField):
                         _q = v.query
                         if _q:

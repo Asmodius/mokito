@@ -227,7 +227,7 @@ class Document(Model):
                 self = await cls.find_one(_id)
             except:
                 self = None
-            if self:
+            if self is not None:
                 return self
         raise MokitoORMError(cls.BY_ID_ERROR)
 
@@ -259,6 +259,10 @@ class Document(Model):
 
     @classmethod
     def find(cls, spec_or_id=None, skip=0, limit=0, sort=None, hint=None):
+        if skip is None:
+            skip = 0
+        if limit is None:
+            limit = 0
         spec = cls.norm_spec(spec_or_id)
         sort = cls.norm_sort(sort)
         cursor = cls.get_collection().find(spec, list(cls.scheme.keys()), skip=skip, limit=limit, sort=sort)
@@ -302,6 +306,17 @@ class Document(Model):
             self.dirty_clear()
             return True
 
+        return False
+
     async def remove(self):
-        await self.get_collection().delete_one({'_id': self._id})
-        self._id = None
+        if self._id is not None:
+            res = await self.get_collection().delete_one({'_id': self._id})
+            self._id = None
+            return res.deleted_count
+        return 0
+
+    @classmethod
+    async def delete(cls, spec=None):
+        spec = cls.norm_spec(spec)
+        res = await cls.get_collection().delete_many(spec)
+        return res.deleted_count
