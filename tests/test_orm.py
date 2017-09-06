@@ -233,7 +233,7 @@ class ORMTestCase(AsyncTestCase):
         })
         self.assertEqual(d['d1'].dbref, u.col1_dbref1)
 
-        yield d['d1'].reread()
+        yield d['d1'].reload()
         self.assertDictEqual(d['d1'].value, {
             '_id': u.col1_id1,
             'x1': 0.5,
@@ -254,7 +254,7 @@ class ORMTestCase(AsyncTestCase):
             'x4': {'a': None, 'b': None}
         })
         self.assertEqual(d['0.d1'].dbref, u.col1_dbref1)
-        yield d['0.d1'].reread()
+        yield d['0.d1'].reload()
         self.assertDictEqual(d['0.d1'].value, {
             '_id': u.col1_id1,
             'x1': 0.5,
@@ -323,8 +323,8 @@ class ORMTestCase(AsyncTestCase):
         self.assertTrue(d.dirty)
         self.assertEqual(d['d1'].dbref, u.col1_dbref2)
 
-        yield d['d1'].reread()
-        yield [i.reread() for i in d['d2']]
+        yield d['d1'].reload()
+        yield [i.reload() for i in d['d2']]
         self.assertDictEqual(d.value, {
             '_id': u.col2_id2,
             'f1': [45602, 'foo3'],
@@ -352,7 +352,7 @@ class ORMTestCase(AsyncTestCase):
         x1 = yield u.Document1.find_one(u.col1_id2)
         x2 = yield u.Document2.find_one(u.col2_id1)
 
-        yield x2.reread('d1')
+        yield x2.reload('d1')
         self.assertDictEqual(x2['d1'].value, {
             '_id': u.col1_id1,
             'x1': 0.5,
@@ -365,7 +365,7 @@ class ORMTestCase(AsyncTestCase):
         self.assertTrue(x2.dirty)
         self.assertDictEqual(x2.query, {'$set': {'d1': u.col1_dbref2}})
 
-        yield x2.reread('d1')
+        yield x2.reload('d1')
         self.assertDictEqual(x2['d1'].value, {
             '_id': u.col1_id2,
             'x1': 1.5,

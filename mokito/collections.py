@@ -430,7 +430,7 @@ class DictField(CollectionField):
         for k, v in self._val.items():
             if not isinstance(v, Document) and v.dirty:
                 self._dirty_fields[k] = True
-                print('X5', self._dirty_fields)
+                # print('X5', self._dirty_fields)
                 return True
         return False
 
@@ -462,7 +462,7 @@ class DictField(CollectionField):
                         ret["$set"][k] = v.dbref
 
                 elif k in self._dirty_fields or v.dirty:
-                    print('X7', self._dirty_fields)
+                    # print('X7', self._dirty_fields)
                     if isinstance(v, ArrayField):
                         _q = v.query
                         if _q:
