@@ -18,16 +18,14 @@ class Documents(UserList):
         ret = self.data[int(k1)]
         return ret[k2] if k2 else ret
 
-    # def __call__(self, method_name, *args, **kwargs):
-    #     return [getattr(i, method_name)(*args, **kwargs) for i in self.data]
-
     # def dirty_clear(self):
     #     map(lambda i: i.dirty_clear(), self.data)
 
-    # @coroutine
-    # def reread(self, *fields):
-    #     # TODO: добавить кэш
-    #     yield [i.reread(*fields) for i in self.data]
+    async def reload(self, *fields, cash=None):
+        if cash is None:
+            cash = {}
+        for i in self.data:
+            await i.reload(*fields, cash=cash)
 
     async def remove(self, safe=True):
         if self.data:
@@ -102,9 +100,6 @@ class Document(Model):
             self.id = value
         else:
             super().__setitem__(key, value)
-
-    # def __call__(self, method_name, *args, **kwargs):
-    #     return getattr(self, method_name)(*args, **kwargs)
 
     @property
     def self_value(self):
@@ -258,7 +253,7 @@ class Document(Model):
     #     raise Return(data)
 
     @classmethod
-    def find(cls, spec_or_id=None, skip=0, limit=0, sort=None, hint=None):
+    def find(cls, spec_or_id=None, skip=0, limit=0, sort=None):
         if skip is None:
             skip = 0
         if limit is None:
@@ -278,15 +273,23 @@ class Document(Model):
         spec = cls.norm_spec(spec)
         return await cls.get_collection().distinct(key, spec)
 
-    async def reread(self, *fields):
+    async def reload(self, *fields, cash=None):
         """
         Read the object again.
         """
+        if cash is None:
+            cash = {}
         if fields:
-            return any([await self[i].reread() for i in fields])
+            return any([await self[i].reload(cash=cash) for i in fields])
 
         elif self._id:
-            data = await self.get_collection().find_one({'_id': self._id}, list(self.scheme.keys()))
+            k = self.dbref
+            if k in cash:
+                data = cash[k]
+            else:
+                data = await self.get_collection().find_one({'_id': self._id}, list(self.scheme.keys()))
+                cash[k] = data
+
             if data:
                 self.clear()
                 self.set_value(data, inner=True)

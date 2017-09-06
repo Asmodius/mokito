@@ -319,7 +319,7 @@ class DictField(CollectionField):
                 self._val[k] = item
 
     def __len__(self):
-        raise len(self._val)
+        return len(self._val)
 
     def _test_item(self, key):
         from .fields import AnyField
