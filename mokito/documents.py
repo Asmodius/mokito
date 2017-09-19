@@ -74,7 +74,6 @@ class Result(object):
 class Document(Model):
     __database__ = None
     __collection__ = None
-    BY_ID_ERROR = 'Запись не найдена'
     sorting = []
 
     def __init__(self, data=None, **kwargs):
@@ -167,29 +166,6 @@ class Document(Model):
 
     value = property(get_value, set_value)
 
-    def as_json(self, *args, **kwargs):
-        def _set_v():
-            if hasattr(self, k):
-                v = getattr(self, k, None)
-                if hasattr(v, '__call__'):
-                    v = v()
-            else:
-                v = self[k]
-                if hasattr(v, 'get_value'):
-                    v = v.get_value(_format='json')
-
-            if isinstance(v, ObjectId):
-                v = str(v)
-            res[alias] = v
-
-        res = {}
-        for k in args:
-            alias = k
-            _set_v()
-        for alias, k in kwargs.items():
-            _set_v()
-        return res
-
     @classmethod
     def get_collection(cls, database=None, collection=None):
         return (database or cls.__database__)[collection or cls.__collection__]
@@ -214,17 +190,6 @@ class Document(Model):
         if not isinstance(_sort, list):
             _sort = [_sort]
         return [(i[1:], DESCENDING) if i[0] == '-' else (i, ASCENDING) for i in _sort]
-
-    @classmethod
-    async def by_id(cls, _id):
-        if _id:
-            try:
-                self = await cls.find_one(_id)
-            except:
-                self = None
-            if self is not None:
-                return self
-        raise MokitoORMError(cls.BY_ID_ERROR)
 
     # @classmethod
     # @coroutine

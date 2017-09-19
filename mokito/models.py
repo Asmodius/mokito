@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 from .manage import ModelManager
 from .collections import DictField
 
@@ -21,6 +23,29 @@ class Model(DictField, metaclass=ModelMeta):
         super().__init__(self.scheme, **kwargs)
         if data:
             self.set_value(data, **kwargs)
+
+    def as_json(self, *args, **kwargs):
+        def _set_v():
+            if hasattr(self, k):
+                v = getattr(self, k, None)
+                if hasattr(v, '__call__'):
+                    v = v()
+            else:
+                v = self[k]
+                if hasattr(v, 'get_value'):
+                    v = v.get_value(_format='json')
+
+            if isinstance(v, ObjectId):
+                v = str(v)
+            res[alias] = v
+
+        res = {}
+        for k in args:
+            alias = k
+            _set_v()
+        for alias, k in kwargs.items():
+            _set_v()
+        return res
 
     # def get(self, key=None, **kwargs):
     #     if isinstance(key, (list, tuple)):

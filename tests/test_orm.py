@@ -51,23 +51,16 @@ class ORMTestCase(AsyncTestCase):
         x = yield u.Document1.find_one(u.col1_id1)
         self.assertEqual(x.id, u.col1_id1)
 
-        y = yield u.Document1.by_id(u.col1_id1)
-        self.assertEqual(y._id, u.col1_id1)
-
         data = copy.deepcopy(u.col1_data1)
         data['x3'][1] = 1
         self.assertDictEqual(data, x.value)
-        self.assertDictEqual(data, y.value)
 
         x = yield u.Document1.find_one(u.col1_id2)
-        y = yield u.Document1.by_id(u.col1_id2)
         self.assertEqual(x.id, u.col1_id2)
-        self.assertEqual(y.id, u.col1_id2)
         data = copy.deepcopy(u.col1_data2)
         data.pop('foo')
         data['x3'][1] = 2
         self.assertDictEqual(data, x.value)
-        self.assertDictEqual(data, y.value)
 
     @gen_test
     def test_find_one_2(self):
@@ -77,9 +70,6 @@ class ORMTestCase(AsyncTestCase):
 
         with self.assertRaises(InvalidId):
             yield u.Document1.find_one('foo')
-
-        with self.assertRaises(mokito.errors.MokitoORMError):
-            yield u.Document1.by_id(_id)
 
     @gen_test
     async def test_find_1(self):
