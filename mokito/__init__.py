@@ -27,7 +27,7 @@ __all__ = [
     "GEOMultiPolygon"
 ]
 
-version = "0.3.8"
+version = "0.3.9"
 
 # TODO: add indexes
 # TODO: add forms

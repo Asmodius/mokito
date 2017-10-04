@@ -135,7 +135,7 @@ class Document(Model):
 
     @classmethod
     def mk(cls, data):
-        self = cls(data, inner=True)
+        self = cls(data, inner=True, safe=True)
         self.dirty_clear()
         self.loaded = True
         return self
@@ -257,7 +257,7 @@ class Document(Model):
 
             if data:
                 self.clear()
-                self.set_value(data, inner=True)
+                self.set_value(data, inner=True, safe=True)
                 self.dirty_clear()
                 self.loaded = True
                 return True

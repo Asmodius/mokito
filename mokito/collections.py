@@ -381,7 +381,13 @@ class DictField(CollectionField):
 
         for key, v in value.items():
             k1, k2 = self._sep_key(key)
-            item = self._test_item(k1)
+            try:
+                item = self._test_item(k1)
+            except KeyError:
+                if kwargs.get('safe'):
+                    continue
+                else:
+                    raise
 
             if k2:
                 item.set_value({k2: v}, **kwargs)
