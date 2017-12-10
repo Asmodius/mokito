@@ -27,7 +27,7 @@ import motor
 import mokito
  
 MONGO_URI = 'mongodb://127.0.0.1:27017'
-MONGO_DB = 'oder'
+MONGO_DB = 'foo'
  
  
 class BaseDocument(mokito.Document):
@@ -67,7 +67,7 @@ async def example():
     post = Post()
     post['blog.title'].value = 'My blob'
     post['post'].value = 'My post'
-    post['author'].value = alice
+    post['author'] = alice
     await post.save()
 ```
 MongoDB in the collection "author" will write this document:
