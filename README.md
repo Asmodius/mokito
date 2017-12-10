@@ -1,19 +1,20 @@
 # mokito
-An asynchronous ORM for accessing MongoDB in Tornado
+An asynchronous ORM for accessing MongoDB in Tornado and asyncio.
 
 ## What is mokito?
-(MOngodb + KIt + TOrnado) is an asynchronous toolkit for working with ``mongodb`` inside a ``tornado`` app, like ``mongokit``. Mokito has a pure implementation of python + tornado and only depends on tornado and bson (provided by pymongo)
+(MOngodb + KIt + TOrnado) is an asynchronous toolkit for working with `mongodb`
+inside a `tornado` or `asyncio` app, like `mongokit`.
 
 ## Why not pymongo?
 [PyMongo](http://api.mongodb.org/python/current/) is the recommended way to work with MongoDB in Python, but isn't asynchronous and not run inside tornado's IOLoop. If you use pymongo you won't take the advantages of tornado.
 
 ## Features
-* validation and conversion of data to the specified type
+* conversion of data to the specified type
 * support for unstructured data
 * dot notation
 * control over data presentation
-* control over data validation
 * mapping onto the same document of models with different schemes
+* working with `tornado` and `asyncio`
 
 ## Installing
 ```bash
@@ -78,6 +79,5 @@ and in the collection "blog_post" will write this document:
 ```javascript
 {"_id": ObjectId("..."), "blog": {"title": "My blob"}, "post": "My post", "author": DBRef("author", ObjectId("..."))}
 ```
-
 
 Please see the [wiki](https://github.com/asmodius/mokito/wiki) for more examples.
