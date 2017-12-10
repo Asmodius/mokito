@@ -22,7 +22,6 @@ pip install mokito
 ```
 
 ## A quick example
-A Document declaration look as follows:
 ```python
 import motor
 import mokito
@@ -35,7 +34,7 @@ class BaseDocument(mokito.Document):
     __database__ = motor.motor_tornado.MotorClient(MONGO_URI)[MONGO_DB]
  
  
-class Author(mokito.Document):
+class Author(BaseDocument):
     scheme = {
         'name':{
             'first': str,
@@ -52,7 +51,7 @@ class Blog(mokito.Model):
     }
  
  
-class Post(mokito.Document):
+class Post(BaseDocument):
     __collection__ = 'blog_post'
     scheme = {
         'blog': Blog,
